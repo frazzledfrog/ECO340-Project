@@ -48,7 +48,7 @@ if (length(csv_files) == 0) {
   # Use data.table::rbindlist for efficient binding
   # Wrap in tryCatch to handle potential errors during file reading/binding
   list_of_data_tables <- NULL # Initialize to NULL
-  all_data <- tryCatch({
+  raw_data <- tryCatch({
     # Read each CSV file using fread into a list
     list_of_data_tables <<- lapply(csv_files, data.table::fread) # Use <<- to assign to outer scope variable
     # Combine the list of data.tables into one and return it directly
@@ -69,10 +69,10 @@ if (length(csv_files) == 0) {
   gc() # Suggest garbage collection
 
   # Check if data loading was successful
-  if (!is.null(all_data)) {
+  if (!is.null(raw_data)) {
      print("Data loaded successfully. Dimensions:")
-     print(dim(all_data))
-     # print(head(all_data)) # Uncomment to view the first few rows
+     print(dim(raw_data))
+     # print(head(raw_data)) # Uncomment to view the first few rows
   } else {
      print("Data loading failed. Please check file paths, permissions, and file integrity.")
   }
@@ -81,9 +81,13 @@ if (length(csv_files) == 0) {
 
 ## Introduction
 
+Over the years, Canada's Gini coefficient with respect to income has fluctuated over the years. This analysis endeavours to show if there have been any meaningful trends in inequities within different age and gender groupings of the Canadian population. The first part of this analysis will be concerned with the Gini coeffients for each age group plotted over the past 24 years, using data from the Canadian LFS from March 2000 through to March 2024. The second part of the analysis will be looking at trends in unemployment and labour force participation over this same period of time for each group.
 
+As this data is not like the NLSY in that it follows the same people over the years, this will not be a generational/cohort study, ie the age brackets will remain fixed and over the years the cohorts will move through them. As well, as this analysis is using the publicly available version of the LFS, data is not provided on race or certain other potentially identifying characteristics.
 
 ##Data Cleaning & Variable Creation
+
+To make analysis easier, some new variables will be created to make an easier time of things. Variables which give multiple categories in numeric form, for example province codes, will be converted to binary dummy variables. The variables that will be converted in this fashion are: gender, re-coding from 1 & 2 to 0 & 1; union status, breaking the "union member" "union contract" and "neither" into two dummy variables for "union member" and "union contract"; the aformentioned provinces, creating 9 dummy variables with Ontario being the reference province; education, creating two sets of dummy variables one being a culmulative set (ie each person only has one dummy variable that's in the on position) and the other being individual (ie someone with a college education has college turned on as well as every switch before); age, recoded to be an approximate age using both AGE12 and AGE6 data to maximize precision; LFSSTAT, recoded from a 1, 2, 3, 4 to a "in labour force", "is employed", and "absent from work" dummies; immigrant similarly into two dummies, one for recent immigrant one for established immigrant; year and month data into months from start of data-set (I changed directions so didn't really use this).
 
 ```{r}
 #For simplicity we will break down the variable LFSSTAT into an Employed binary variable and an in labour force variable. Let's label these is_employed and in_lf -- using these we can more easily down the line calculated changing unemployment rates and labour force participation rates.
@@ -93,7 +97,7 @@ if (length(csv_files) == 0) {
 #same process now for IMMIG, immigration status. going to create variables newer_immigrant for immigrants here for 10 or less years, older_immigrant for those who have been here for more than 10 years.
 #education will be broken into culmulative dummies, NOTE TO SELF NEED TO REMEMBER THERE IS SIG COLLINEARITY MUST ACCOUNT FOR, as well as a set of exclusive categories for regression purposes :)
 
-all_data <- all_data %>%
+raw_data <- raw_data %>%
   mutate(
     is_employed = ifelse(LFSSTAT == 1, 1, 0),
     in_lf = ifelse(LFSSTAT %in% c(1, 2), 1, 0),
@@ -129,7 +133,7 @@ all_data <- all_data %>%
 
 #going to create a variable which is a mid-point estimate for age, combining variables AGE_12 and AGE_6, this new variable will be called age_rough.
 
-all_data <- all_data %>%
+raw_data <- raw_data %>%
   mutate(age_rough = case_when(
     AGE_6 == 1 ~ 15.5,      # 15–16 (from AGE_6)
     AGE_6 == 2 ~ 18,        # 17–19 (from AGE_6)
@@ -147,13 +151,138 @@ all_data <- all_data %>%
   ))
 
 # Create a variable for months from start of data (starting from January 2014)
-all_data <- all_data %>%
+raw_data <- raw_data %>%
   mutate(months_from_start = (SURVYEAR - 2014) * 12 + SURVMNTH)
 
 ```
 
+## Creating our sets of Gini Coefficients
+
+now we want to create time series of Gini cofficients for each of our "groups" of Canadians. First let's just quickly demonstrate the process by calculating the Gini coefficient for our whole dataset over the time series, using values for HRLYEARN. 
+
 ```{r}
-#creating our subset (which will be overwritten each time the value is calculated)
+# Ensure necessary packages are loaded (dplyr, tidyr, ineq, ggplot2)
+# These should be handled by the r_package_check_install artifact if run first
+# library(dplyr)
+# library(tidyr)
+# library(ineq)
+# library(ggplot2)
+# library(lubridate) # Potentially useful for date calculations, though base R used here
+
+# --- Create Age Group Labelling ---
+# Assuming 'raw_data' is your data frame with AGE_6 and AGE_12 columns
+raw_data <- raw_data %>%
+  mutate(
+    age_group = case_when(
+      # Ages 15-19 based on AGE_6
+      AGE_6 %in% c(1, 2) ~ "15-19",
+      # Ages 20-34 based on AGE_12
+      AGE_12 %in% c(2, 3, 4) ~ "20-34",
+      # Ages 35-54 based on AGE_12
+      AGE_12 %in% c(5, 6, 7, 8) ~ "35-54",
+      # Ages 55+ based on AGE_12
+      AGE_12 %in% c(9, 10, 11, 12) ~ "55+",
+      # Optional: Handle cases that don't fit any category (e.g., NA or other values)
+      TRUE ~ NA_character_ # Assign NA if none of the above conditions are met
+    ),
+    # Optional: Ensure the new column is a factor if preferred for analysis/plotting
+    # age_group = factor(age_group, levels = c("15-19", "20-34", "35-54", "55+"))
+  )
+
+# --- Calculate Gini Coefficient Time Series by Age Group ---
+# Assuming 'raw_data' also contains 'months_from_start' and 'HRLYEARN'
+
+# Check if the required columns exist (add checks if not already present)
+if (!all(c("months_from_start", "HRLYEARN", "age_group") %in% names(raw_data))) {
+  stop("Error: One or more required columns (months_from_start, HRLYEARN, age_group) not found in raw_data.")
+}
+# Ensure 'HRLYEARN' is numeric (add conversion if needed)
+if (!is.numeric(raw_data$HRLYEARN)) {
+   # Add robust numeric conversion here if not already done
+   warning("HRLYEARN column is not numeric. Ensure it's converted before this step.")
+}
+
+
+gini_timeseries <- raw_data %>%
+  # Filter out rows where age_group or HRLYEARN is NA, as they can't be used
+  filter(!is.na(age_group), !is.na(HRLYEARN)) %>%
+  # Group data by the time period identifier AND age group
+  group_by(months_from_start, age_group) %>%
+  # Calculate the Gini coefficient for each subgroup
+  summarize(
+    # Use the Gini function from the 'ineq' package
+    gini_value = ineq::Gini(HRLYEARN, na.rm = TRUE), # na.rm = TRUE is still good practice
+    # Optional: Add a count of non-NA observations used for each calculation
+    n_observations = n(), # Use n() since we filtered NAs earlier
+    .groups = 'drop' # Drop grouping structure after summarize
+  ) %>%
+  # Reshape data from long to wide format
+  tidyr::pivot_wider(
+    id_cols = months_from_start, # Column(s) to keep as identifiers
+    names_from = age_group,      # Column whose values become new column names
+    values_from = c(gini_value, n_observations), # Column(s) whose values fill the new columns
+    names_sep = "_",             # Separator between value name and age group name
+    # Corrected prefix application: Apply prefix within names_glue or rename later
+    # Using names_glue for more control:
+    names_glue = "{age_group}_{.value}" # Creates names like 15-19_gini_value, 15-19_n_observations
+  ) %>%
+  # Arrange by time period for clarity
+  arrange(months_from_start)
+
+# --- Plot Gini Coefficients Over Time by Age Group ---
+
+# Check if gini_timeseries was created successfully and has data
+if (exists("gini_timeseries") && nrow(gini_timeseries) > 0) {
+
+  # Reshape the data back to long format specifically for plotting Gini values
+  # AND add a Date column based on months_from_start (assuming 1 = Jan 2014)
+  gini_timeseries_long_for_plot <- gini_timeseries %>%
+    # Select the time column and columns ending with '_gini_value'
+    select(months_from_start, ends_with("_gini_value")) %>%
+    pivot_longer(
+      cols = ends_with("_gini_value"), # Select columns to lengthen
+      names_to = "age_group",          # New column for the original column names (e.g., "15-19_gini_value")
+      names_pattern = "(.*)_gini_value", # Extract the age group part before "_gini_value"
+      values_to = "gini_coefficient"   # New column for the Gini values
+    ) %>%
+    # Add a Date column
+    mutate(
+      # Calculate year and month based on months_from_start
+      year = 2014 + floor((months_from_start - 1) / 12),
+      month = ((months_from_start - 1) %% 12) + 1,
+      # Create a Date object for the first day of the calculated month/year
+      plot_date = as.Date(paste(year, month, 1, sep = "-"))
+    )
+
+  # Create the plot using ggplot2, mapping plot_date to x-axis
+  gini_plot <- ggplot(gini_timeseries_long_for_plot,
+                      aes(x = plot_date, y = gini_coefficient, color = age_group)) +
+    geom_line(linewidth = 1) + # Thicker line for visibility
+    geom_point(size = 1.5) +    # Add points
+    # Use scale_x_date for better control over date axis formatting
+    scale_x_date(
+        date_breaks = "1 year", # Major breaks every year
+        date_minor_breaks = "3 months", # Minor breaks every 3 months
+        date_labels = "%Y" # Display only the year for major breaks
+        # Alternative label formats: "%b %Y" (e.g., Jan 2014), "%Y-%m" (e.g., 2014-01)
+    ) +
+    labs(
+      title = "Gini Coefficient of Hourly Earnings Over Time by Age Group",
+      x = "Date", # Updated x-axis label
+      y = "Gini Coefficient",
+      color = "Age Group" # Legend title
+    ) +
+    theme_minimal(base_size = 12) + # Use a clean theme with slightly larger base font
+    theme(legend.position = "bottom") # Move legend below plot
+
+  # Print the plot to display it
+  print(gini_plot)
+
+} else {
+  message("Skipping plot: 'gini_timeseries' data frame not found or is empty.")
+}
+
+
 
 ```
 
