@@ -18,7 +18,8 @@ required_packages <- c(
   "caret",      # For ML tools like cross-validation
   "cluster",    # For clustering algorithms
   "modelsummary", # For summarizing regressions
-  "ineq"        # For calculating the Gini coefficient
+  "ineq",        # For calculating the Gini coefficient
+  "data.table"  # For more efficient merging of CSV files
 )
 
 for (pkg in required_packages) {
@@ -30,16 +31,52 @@ for (pkg in required_packages) {
   message(paste("Loaded package:", pkg))
 }
 
-print("All required packages checked, installed if necessary, and loaded.")
-
 # Set your working directory to the folder with the CSVs
-setwd("/Users/alex/Desktop/ECO340-Project")  # Replace with your actual path
+# IMPORTANT: Replace with your actual path
+setwd("/Users/alex/Desktop/ECO340-Project")
+
 # List all CSV files in the folder
-csv_files <- list.files(pattern = "\\.csv$")
-# Read them all into one dataframe
-all_data <- csv_files %>%
-  lapply(read.csv) %>%
-  bind_rows()
+csv_files <- list.files(pattern = "\\.csv$", full.names = TRUE) # Use full.names = TRUE for fread
+
+# Check if any CSV files were found
+if (length(csv_files) == 0) {
+  stop("No CSV files found in the specified directory.")
+} else {
+  message(paste("Found", length(csv_files), "CSV files. Attempting to read and combine..."))
+
+  # Use data.table::fread for faster, memory-efficient reading
+  # Use data.table::rbindlist for efficient binding
+  # Wrap in tryCatch to handle potential errors during file reading/binding
+  list_of_data_tables <- NULL # Initialize to NULL
+  all_data <- tryCatch({
+    # Read each CSV file using fread into a list
+    list_of_data_tables <<- lapply(csv_files, data.table::fread) # Use <<- to assign to outer scope variable
+    # Combine the list of data.tables into one and return it directly
+    message("Successfully read and combined CSV files.")
+    data.table::rbindlist(list_of_data_tables) # Directly return the combined table
+  }, error = function(e) {
+    # Print error message if reading/binding fails
+    message("Error reading or binding CSV files: ", e$message)
+    return(NULL) # Return NULL or an empty data structure if preferred
+  })
+
+  # Optional: Clean up the list of data tables to free memory sooner
+  # Check if the list was created before trying to remove it
+  if (!is.null(list_of_data_tables)) {
+    rm(list_of_data_tables)
+    message("Intermediate list 'list_of_data_tables' removed.")
+  }
+  gc() # Suggest garbage collection
+
+  # Check if data loading was successful
+  if (!is.null(all_data)) {
+     print("Data loaded successfully. Dimensions:")
+     print(dim(all_data))
+     # print(head(all_data)) # Uncomment to view the first few rows
+  } else {
+     print("Data loading failed. Please check file paths, permissions, and file integrity.")
+  }
+}
 ```
 
 ## Introduction
@@ -134,9 +171,10 @@ As this paper is using the publicly available LFS data, certain information is e
 
 ## ChatGPT Disclosure:
 
-Through the course of this project, I utilized ChatGPT. Below are chat links, organized by theme/part of the project the chat is relevant:
+Through the course of this project, I utilized Gemini. Below are chat links, organized by theme/part of the project the chat is relevant:
 
-set-up: <https://chatgpt.com/share/67eb5fdb-95c8-8010-8ccf-05793594a3c1>
+set-up: <https://g.co/gemini/share/085ca32bc3d4>
+This was crucial, only noticed that I was doing a very inefficient way to merge the csv files when I swapped from working on my desktop with 64Gb of RAM to my MacBook with 16Gb lol. I also used it to make a little loop function for loading the packages, just to make it easier to add new packages I want to use as I go through the project.
 
 general writing: <https://chatgpt.com/share/67eebc76-c988-8010-801d-fbc4827958f2>
 
