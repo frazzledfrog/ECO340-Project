@@ -33,7 +33,7 @@ for (pkg in required_packages) {
 print("All required packages checked, installed if necessary, and loaded.")
 
 # Set your working directory to the folder with the CSVs
-setwd("/Users/alex/Desktop/ECO340 Research Project")  # Replace with your actual path
+setwd("/Users/alex/Desktop/ECO340-Project")  # Replace with your actual path
 # List all CSV files in the folder
 csv_files <- list.files(pattern = "\\.csv$")
 # Read them all into one dataframe
