@@ -1,0 +1,143 @@
+---
+title: "Data Research Project"
+author: "Alex McKeown"
+date: "2025-03-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#set up, clear workspace, import libraries, then import data from folder
+#this is not a fun section to run, try to run it once then don't run again
+rm(list = ls())
+knitr::opts_chunk$set(echo = TRUE)
+# List of required packages
+required_packages <- c(
+  "dplyr",
+  "tidyverse",  # Includes ggplot2, readr, etc.
+  "plm",        # For panel data regression models
+  "caret",      # For ML tools like cross-validation
+  "cluster",    # For clustering algorithms
+  "modelsummary", # For summarizing regressions
+  "ineq"        # For calculating the Gini coefficient
+)
+
+for (pkg in required_packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    message(paste("Installing package:", pkg))
+    install.packages(pkg, dependencies = TRUE)
+  }
+  library(pkg, character.only = TRUE)
+  message(paste("Loaded package:", pkg))
+}
+
+print("All required packages checked, installed if necessary, and loaded.")
+
+# Set your working directory to the folder with the CSVs
+setwd("/Users/alex/Desktop/ECO340 Research Project")  # Replace with your actual path
+# List all CSV files in the folder
+csv_files <- list.files(pattern = "\\.csv$")
+# Read them all into one dataframe
+all_data <- csv_files %>%
+  lapply(read.csv) %>%
+  bind_rows()
+```
+
+## Introduction
+
+
+
+##Data Cleaning & Variable Creation
+
+```{r}
+#For simplicity we will break down the variable LFSSTAT into an Employed binary variable and an in labour force variable. Let's label these is_employed and in_lf -- using these we can more easily down the line calculated changing unemployment rates and labour force participation rates.
+#Gender in the LFS datafile is expressed as either a 1 for men and 2 for women, stored as GENDER. We will create a new variable, woman, which will be a binary variable -- 0 for men, 1 for women.
+#as opposed to using province codes, I have created new binary variables for the 9 provinces which aren't Ontario. Because I am biased, I will be using Ontario as the default.
+#similar to the step for dis-aggregation of the LFSSTAT variable, will decompose the union variable, which gives a 1 for being a union member, a 2 for being covered by union contract, and a 3 for being not covered (an 8 for not being applicable, but dwai bc we won't run a regression on them), into a binary for being a union member (ie 1 only) and a binary for being covered by union contract (1 and 2). we will call these union_member and union_contract (outstanding creativity there w the names)
+#same process now for IMMIG, immigration status. going to create variables newer_immigrant for immigrants here for 10 or less years, older_immigrant for those who have been here for more than 10 years.
+#education will be broken into culmulative dummies, NOTE TO SELF NEED TO REMEMBER THERE IS SIG COLLINEARITY MUST ACCOUNT FOR, as well as a set of exclusive categories for regression purposes :)
+
+all_data <- all_data %>%
+  mutate(
+    is_employed = ifelse(LFSSTAT == 1, 1, 0),
+    in_lf = ifelse(LFSSTAT %in% c(1, 2), 1, 0),
+    woman = ifelse(GENDER == 2, 1, 0),
+    prov_nl = ifelse(PROV == 10, 1, 0),
+    prov_pe = ifelse(PROV == 11, 1, 0),
+    prov_ns = ifelse(PROV == 12, 1, 0),
+    prov_nb = ifelse(PROV == 13, 1, 0),
+    prov_qc = ifelse(PROV == 24, 1, 0),
+    prov_mb = ifelse(PROV == 46, 1, 0),
+    prov_sk = ifelse(PROV == 47, 1, 0),
+    prov_ab = ifelse(PROV == 48, 1, 0),
+    prov_bc = ifelse(PROV == 59, 1, 0),
+    union_member = ifelse(UNION == 1, 1, 0),
+    union_contract = ifelse(UNION %in% c(1, 2), 1, 0),
+    newer_immigrant = ifelse(IMMIG == 1, 1, 0),
+    older_immigrant = ifelse(IMMIG == 2, 1, 0),
+    #Culmulative Ed
+    some_hs_plus = ifelse(EDUC >= 1, 1, 0),
+    hs_grad_plus = ifelse(EDUC >= 2, 1, 0),
+    some_ps_plus = ifelse(EDUC >= 3, 1, 0),
+    ps_cert_plus = ifelse(EDUC >= 4, 1, 0),
+    ba_plus = ifelse(EDUC >= 5, 1, 0),
+    above_ba_plus = ifelse(EDUC == 6, 1, 0),
+    #Exclusive Ed
+    some_hs = ifelse(EDUC == 1, 1, 0),
+    hs_grad = ifelse(EDUC == 2, 1, 0),
+    some_ps = ifelse(EDUC == 3, 1, 0),
+    ps_cert = ifelse(EDUC == 4, 1, 0),
+    ba = ifelse(EDUC == 5, 1, 0),
+    above_ba = ifelse(EDUC == 6, 1, 0)
+  )
+
+#going to create a variable which is a mid-point estimate for age, combining variables AGE_12 and AGE_6, this new variable will be called age_rough.
+
+all_data <- all_data %>%
+  mutate(age_rough = case_when(
+    AGE_6 == 1 ~ 15.5,      # 15–16 (from AGE_6)
+    AGE_6 == 2 ~ 18,        # 17–19 (from AGE_6)
+    AGE_12 == 2 ~ 22,       # 20–24
+    AGE_12 == 3 ~ 27,       # 25–29
+    AGE_12 == 4 ~ 32,       # 30–34
+    AGE_12 == 5 ~ 37,       # 35–39
+    AGE_12 == 6 ~ 42,       # 40–44
+    AGE_12 == 7 ~ 47,       # 45–49
+    AGE_12 == 8 ~ 52,       # 50–54
+    AGE_12 == 9 ~ 57,       # 55–59
+    AGE_12 == 10 ~ 62,      # 60–64
+    AGE_12 == 11 ~ 67,      # 65–69
+    AGE_12 == 12 ~ 75       # 70+
+  ))
+
+# Create a variable for months from start of data (starting from January 2014)
+all_data <- all_data %>%
+  mutate(months_from_start = (SURVYEAR - 2014) * 12 + SURVMNTH)
+
+```
+
+```{r}
+#creating our subset (which will be overwritten each time the value is calculated)
+
+```
+
+## Findings from simple regressions
+
+Here we see some evidence that women make less, on average, then men do in the Canadian labour force. The aim of this paper is not to investigate whether and how there is gender discrimination, but rather to determine whether the gender wage gap varies with the business cycle -- during recessionary periods do we see women get laid off first? Let's build a separate data frame for our "macro" variables: % change in Real GDP, % change in Real GDP per Capita, and just for fun lets also throw in the inflation rate, a measure of inequality (gini coefficient), and overall labour participation and unemployment rates to compare our LFS data to. We can then map on these values into our original dataset -- for example, gdp growth data is reported quarterly, we can mutate a new variable in such that if year == 20xx and month == c(a, b, c) = growth value for that quarter.
+
+``` {r}
+
+```
+
+## Limitations of the Data
+
+As this paper is using the publicly available LFS data, certain information is excluded -- thanks to this there are no observations for the Territories, nor is there any access to ethnicity/race variables. Finally, the standard scope of the LFS applies: full time members of the armed forces, people living on reserves, institutionalized persons, and those under the age of 15 are excluded.
+
+## ChatGPT Disclosure:
+
+Through the course of this project, I utilized ChatGPT. Below are chat links, organized by theme/part of the project the chat is relevant:
+
+set-up: <https://chatgpt.com/share/67eb5fdb-95c8-8010-8ccf-05793594a3c1>
+
+general writing: <https://chatgpt.com/share/67eebc76-c988-8010-801d-fbc4827958f2>
+
+general code and data-set questions: <https://chatgpt.com/share/67eebc87-d4a0-8010-9c20-69841f956c4d>
