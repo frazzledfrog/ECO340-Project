@@ -101,7 +101,7 @@ raw_data <- raw_data %>%
   mutate(
     is_employed = ifelse(LFSSTAT == 1, 1, 0),
     in_lf = ifelse(LFSSTAT %in% c(1, 2), 1, 0),
-    woman = ifelse(GENDER == 2, 1, 0),
+    woman = ifelse(SEX == 2, 1, 0),
     prov_nl = ifelse(PROV == 10, 1, 0),
     prov_pe = ifelse(PROV == 11, 1, 0),
     prov_ns = ifelse(PROV == 12, 1, 0),
@@ -152,7 +152,7 @@ raw_data <- raw_data %>%
 
 # Create a variable for months from start of data (starting from January 2014)
 raw_data <- raw_data %>%
-  mutate(months_from_start = (SURVYEAR - 2014) * 12 + SURVMNTH)
+  mutate(months_from_start = (SURVYEAR - 2006) * 12 + SURVMNTH)
 
 ```
 
