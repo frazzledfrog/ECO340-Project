@@ -5,78 +5,144 @@ date: "2025-03-29"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-#set up, clear workspace, import libraries, then import data from folder
-#this is not a fun section to run, try to run it once then don't run again
+```{r echo=FALSE}
+# --- Setup ---
+# Clear workspace
 rm(list = ls())
-knitr::opts_chunk$set(echo = TRUE)
-# List of required packages
+
+# --- Package Management ---
+# Define required packages
 required_packages <- c(
-  "dplyr",
-  "tidyverse",  # Includes ggplot2, readr, etc.
-  "plm",        # For panel data regression models
-  "caret",      # For ML tools like cross-validation
-  "cluster",    # For clustering algorithms
-  "modelsummary", # For summarizing regressions
-  "ineq",        # For calculating the Gini coefficient
-  "data.table"  # For more efficient merging of CSV files
+  "data.table", "dplyr", "tidyverse", "plm",
+  "caret", "cluster", "modelsummary", "ineq"
 )
 
-for (pkg in required_packages) {
+# Install (if needed) and load packages
+message("--- Loading Packages ---")
+packages_loaded <- sapply(required_packages, function(pkg) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     message(paste("Installing package:", pkg))
-    install.packages(pkg, dependencies = TRUE)
-  }
-  library(pkg, character.only = TRUE)
-  message(paste("Loaded package:", pkg))
-}
-
-# Set your working directory to the folder with the CSVs
-# IMPORTANT: Replace with your actual path
-setwd("/Users/alex/Desktop/ECO340-Project")
-
-# List all CSV files in the folder
-csv_files <- list.files(pattern = "\\.csv$", full.names = TRUE) # Use full.names = TRUE for fread
-
-# Check if any CSV files were found
-if (length(csv_files) == 0) {
-  stop("No CSV files found in the specified directory.")
-} else {
-  message(paste("Found", length(csv_files), "CSV files. Attempting to read and combine..."))
-
-  # Use data.table::fread for faster, memory-efficient reading
-  # Use data.table::rbindlist for efficient binding
-  # Wrap in tryCatch to handle potential errors during file reading/binding
-  list_of_data_tables <- NULL # Initialize to NULL
-  raw_data <- tryCatch({
-    # Read each CSV file using fread into a list
-    list_of_data_tables <<- lapply(csv_files, data.table::fread) # Use <<- to assign to outer scope variable
-    # Combine the list of data.tables into one and return it directly
-    message("Successfully read and combined CSV files.")
-    data.table::rbindlist(list_of_data_tables) # Directly return the combined table
-  }, error = function(e) {
-    # Print error message if reading/binding fails
-    message("Error reading or binding CSV files: ", e$message)
-    return(NULL) # Return NULL or an empty data structure if preferred
-  })
-
-  # Optional: Clean up the list of data tables to free memory sooner
-  # Check if the list was created before trying to remove it
-  if (!is.null(list_of_data_tables)) {
-    rm(list_of_data_tables)
-    message("Intermediate list 'list_of_data_tables' removed.")
-  }
-  gc() # Suggest garbage collection
-
-  # Check if data loading was successful
-  if (!is.null(raw_data)) {
-     print("Data loaded successfully. Dimensions:")
-     print(dim(raw_data))
-     # print(head(raw_data)) # Uncomment to view the first few rows
+    tryCatch({
+        install.packages(pkg, dependencies = TRUE)
+        library(pkg, character.only = TRUE)
+        message(paste("Successfully installed and loaded:", pkg))
+        return(TRUE)
+      }, error = function(e) {
+        message(paste("Failed to install package:", pkg, "Error:", e$message))
+        return(FALSE)
+      })
   } else {
-     print("Data loading failed. Please check file paths, permissions, and file integrity.")
+    library(pkg, character.only = TRUE)
+    # message(paste("Loaded package:", pkg)) # Optional: Keep if detailed loading log is desired
+    return(TRUE)
   }
+})
+
+# Ensure data.table loaded successfully (critical for fread/rbindlist)
+if (!packages_loaded["data.table"]) {
+  stop("Critical package 'data.table' could not be loaded. Aborting.")
 }
+message("--- Package Loading Complete ---")
+
+
+# --- Configuration ---
+# Set working directory (modify path as needed)
+csv_folder_path <- "/Users/alex/Desktop/ECO340-Project" # <-- *** USER: MODIFY THIS PATH ***
+
+tryCatch({
+    setwd(csv_folder_path)
+    message(paste("Working directory set to:", getwd()))
+  }, warning = function(w){
+    stop("Warning setting working directory: ", w$message, ". Check path: ", csv_folder_path)
+  }, error = function(e) {
+    stop("Error setting working directory: ", e$message, ". Check path: ", csv_folder_path)
+  }
+)
+
+# --- Data Loading and Combining ---
+message("--- Starting Data Loading ---")
+
+# --- File Filtering ---
+# 1. List all CSV files in the directory
+message("Listing all CSV files...")
+all_csv_files <- list.files(path = getwd(), pattern = "\\.csv$", full.names = TRUE, ignore.case = TRUE)
+
+if (length(all_csv_files) == 0) {
+  stop("No CSV files found in directory: ", getwd())
+} else {
+   message(paste("Found", length(all_csv_files), "total CSV files."))
+}
+
+# 2. Define regex pattern for Jan (01) and June (06) files: pubMMYY.csv
+filename_pattern <- "^pub(01|06)\\d{2}\\.csv$"
+message(paste("Filtering for files matching pattern:", filename_pattern))
+
+# 3. Filter the file list based on the pattern
+all_basenames <- basename(all_csv_files)
+matching_indices <- grepl(filename_pattern, all_basenames, ignore.case = TRUE)
+csv_files <- all_csv_files[matching_indices]
+# --- End File Filtering ---
+
+# Check if any files matched the filter
+if (length(csv_files) == 0) {
+  stop("No CSV files matching the pattern '", filename_pattern, "' were found in ", getwd())
+} else {
+  message(paste("Found", length(csv_files), "files matching the pattern. Processing..."))
+  message("Files to be processed:")
+  print(basename(csv_files)) # Show which files will be loaded
+
+  # Initialize combined data table
+  LFS_data <- NULL
+
+  # Loop through filtered files, read using fread, and combine using rbindlist
+  for (i in seq_along(csv_files)) {
+    file_path <- csv_files[i]
+    message(paste("Processing file", i, "of", length(csv_files), ":", basename(file_path)))
+
+    current_data <- tryCatch({
+        # Read efficiently with fread
+        data.table::fread(file_path, showProgress = FALSE)
+      }, error = function(e) {
+        message(paste("Error reading file:", basename(file_path), "-", e$message))
+        return(NULL) # Skip file on error
+      })
+
+    # Combine data if read successfully and not empty
+    if (!is.null(current_data) && nrow(current_data) > 0) {
+      if (is.null(LFS_data)) {
+        LFS_data <- current_data # Initialize with first file
+      } else {
+        # Bind rows, matching names & filling missing columns
+        LFS_data <- data.table::rbindlist(list(LFS_data, current_data), use.names = TRUE, fill = TRUE)
+      }
+    } else if (!is.null(current_data) && nrow(current_data) == 0) {
+        message(paste("Skipping empty file:", basename(file_path)))
+    }
+    gc()
+  } # End file loop
+
+  # Suggest garbage collection after loop
+  gc()
+  message("--- Data Loading Loop Finished ---")
+
+  # Final check and summary of combined data
+  if (!is.null(LFS_data) && data.table::is.data.table(LFS_data) && nrow(LFS_data) > 0) {
+    message("Data loaded and combined successfully.")
+    message("Dimensions of combined data (rows, columns):")
+    print(dim(LFS_data))
+    message("Memory usage:")
+    print(object.size(LFS_data), units = "auto")
+    # print(head(LFS_data)) # Uncomment to view head
+  } else {
+      message("Warning: Final combined data is empty or invalid. Check source files and logs.")
+      if (!is.null(LFS_data)) print(str(LFS_data)) # Print structure if it exists but is problematic
+  }
+} # End processing block
+
+# --- End of Script ---
+message("--- Script Finished ---")
+
+
 ```
 
 ## Introduction
@@ -87,7 +153,7 @@ As this data is not like the NLSY in that it follows the same people over the ye
 
 ##Data Cleaning & Variable Creation
 
-To make analysis easier, some new variables will be created to make an easier time of things. Variables which give multiple categories in numeric form, for example province codes, will be converted to binary dummy variables. The variables that will be converted in this fashion are: gender, re-coding from 1 & 2 to 0 & 1; union status, breaking the "union member" "union contract" and "neither" into two dummy variables for "union member" and "union contract"; the aformentioned provinces, creating 9 dummy variables with Ontario being the reference province; education, creating two sets of dummy variables one being a culmulative set (ie each person only has one dummy variable that's in the on position) and the other being individual (ie someone with a college education has college turned on as well as every switch before); age, recoded to be an approximate age using both AGE12 and AGE6 data to maximize precision; LFSSTAT, recoded from a 1, 2, 3, 4 to a "in labour force", "is employed", and "absent from work" dummies; immigrant similarly into two dummies, one for recent immigrant one for established immigrant; year and month data into months from start of data-set (I changed directions so didn't really use this).
+To make analysis easier, some new variables will be created to make an easier time of things. Variables which give multiple categories in numeric form, for example province codes, will be converted to binary dummy variables. The variables that will be converted in this fashion are: gender, re-coding from 1 & 2 to 0 & 1; union status, breaking the "union member" "union contract" and "neither" into two dummy variables for "union member" and "union contract"; the aformentioned provinces, creating 9 dummy variables with Ontario being the reference province; education, creating two sets of dummy variables one being a culmulative set (ie each person only has one dummy variable that's in the on position) and the other being individual (ie someone with a college education has college turned on as well as every switch before); age, recoded to be an approximate age using both AGE12 and AGE6 data to maximize precision; LFSSTAT, recoded from a 1, 2, 3, 4 to a "in labour force", "is employed", and "absent from work" dummies; immigrant similarly into two dummies, one for recent immigrant one for established immigrant; year and month data into months from start of data-set (I changed directions so didn't really use this). Also creating a logarithmic version of hourly earnings so that regressions can be easily interpereted.
 
 ```{r}
 #For simplicity we will break down the variable LFSSTAT into an Employed binary variable and an in labour force variable. Let's label these is_employed and in_lf -- using these we can more easily down the line calculated changing unemployment rates and labour force participation rates.
@@ -96,201 +162,370 @@ To make analysis easier, some new variables will be created to make an easier ti
 #similar to the step for dis-aggregation of the LFSSTAT variable, will decompose the union variable, which gives a 1 for being a union member, a 2 for being covered by union contract, and a 3 for being not covered (an 8 for not being applicable, but dwai bc we won't run a regression on them), into a binary for being a union member (ie 1 only) and a binary for being covered by union contract (1 and 2). we will call these union_member and union_contract (outstanding creativity there w the names)
 #same process now for IMMIG, immigration status. going to create variables newer_immigrant for immigrants here for 10 or less years, older_immigrant for those who have been here for more than 10 years.
 #education will be broken into culmulative dummies, NOTE TO SELF NEED TO REMEMBER THERE IS SIG COLLINEARITY MUST ACCOUNT FOR, as well as a set of exclusive categories for regression purposes :)
+# Assuming LFS_data is your data frame
+# Convert LFS_data to a data.table object *in place*
+# This is crucial for memory efficiency.
+setDT(LFS_data)
 
-raw_data <- raw_data %>%
-  mutate(
-    is_employed = ifelse(LFSSTAT == 1, 1, 0),
-    in_lf = ifelse(LFSSTAT %in% c(1, 2), 1, 0),
-    woman = ifelse(SEX == 2, 1, 0),
-    prov_nl = ifelse(PROV == 10, 1, 0),
-    prov_pe = ifelse(PROV == 11, 1, 0),
-    prov_ns = ifelse(PROV == 12, 1, 0),
-    prov_nb = ifelse(PROV == 13, 1, 0),
-    prov_qc = ifelse(PROV == 24, 1, 0),
-    prov_mb = ifelse(PROV == 46, 1, 0),
-    prov_sk = ifelse(PROV == 47, 1, 0),
-    prov_ab = ifelse(PROV == 48, 1, 0),
-    prov_bc = ifelse(PROV == 59, 1, 0),
-    union_member = ifelse(UNION == 1, 1, 0),
-    union_contract = ifelse(UNION %in% c(1, 2), 1, 0),
-    newer_immigrant = ifelse(IMMIG == 1, 1, 0),
-    older_immigrant = ifelse(IMMIG == 2, 1, 0),
-    #Culmulative Ed
-    some_hs_plus = ifelse(EDUC >= 1, 1, 0),
-    hs_grad_plus = ifelse(EDUC >= 2, 1, 0),
-    some_ps_plus = ifelse(EDUC >= 3, 1, 0),
-    ps_cert_plus = ifelse(EDUC >= 4, 1, 0),
-    ba_plus = ifelse(EDUC >= 5, 1, 0),
-    above_ba_plus = ifelse(EDUC == 6, 1, 0),
-    #Exclusive Ed
-    some_hs = ifelse(EDUC == 1, 1, 0),
-    hs_grad = ifelse(EDUC == 2, 1, 0),
-    some_ps = ifelse(EDUC == 3, 1, 0),
-    ps_cert = ifelse(EDUC == 4, 1, 0),
-    ba = ifelse(EDUC == 5, 1, 0),
-    above_ba = ifelse(EDUC == 6, 1, 0)
-  )
+#Log Hourly Earnings
+LFS_data[, ln_income := log(HRLYEARN)]
 
-#going to create a variable which is a mid-point estimate for age, combining variables AGE_12 and AGE_6, this new variable will be called age_rough.
+# --- Create binary indicator variables using := ---
+# The `:=` operator modifies the data.table in place, avoiding copies.
 
-raw_data <- raw_data %>%
-  mutate(age_rough = case_when(
-    AGE_6 == 1 ~ 15.5,      # 15–16 (from AGE_6)
-    AGE_6 == 2 ~ 18,        # 17–19 (from AGE_6)
-    AGE_12 == 2 ~ 22,       # 20–24
-    AGE_12 == 3 ~ 27,       # 25–29
-    AGE_12 == 4 ~ 32,       # 30–34
-    AGE_12 == 5 ~ 37,       # 35–39
-    AGE_12 == 6 ~ 42,       # 40–44
-    AGE_12 == 7 ~ 47,       # 45–49
-    AGE_12 == 8 ~ 52,       # 50–54
-    AGE_12 == 9 ~ 57,       # 55–59
-    AGE_12 == 10 ~ 62,      # 60–64
-    AGE_12 == 11 ~ 67,      # 65–69
-    AGE_12 == 12 ~ 75       # 70+
-  ))
+# Employment and Labour Force Status
+LFS_data[, is_employed := fifelse(LFSSTAT == 1, 1, 0)]
+LFS_data[, in_lf := fifelse(LFSSTAT %in% c(1, 2), 1, 0)]
 
-# Create a variable for months from start of data (starting from January 2014)
-raw_data <- raw_data %>%
-  mutate(months_from_start = (SURVYEAR - 2006) * 12 + SURVMNTH)
+# Sex
+LFS_data[, woman := fifelse(SEX == 2 | GENDER == 2, 1L, 0L, na = 0L)]
 
-```
+# Age above 15, proxy for how many years as an adult either receiving education or in the workforce -- while I would like to have exact years of age and years of education and then subtract one from the other - 5 to account for the difference, there is more limited data here so a rough age approximation by taking the midpoint of the age brackets will be done -- yeah I COULD look at Canada's population pyramid and make a weighted estimate using that but then again stats Canada does there own controls and blah blah
+# Below takes the midpoint of each age range and then docks 15 from it
+LFS_data[, rough_age_dock15 := fcase(
+    AGE_12 == 1,  2,
+    AGE_12 == 2,  7,
+    AGE_12 == 3,  12,
+    AGE_12 == 4,  17,
+    AGE_12 == 5,  22,
+    AGE_12 == 6,  27,
+    AGE_12 == 7,  32,
+    AGE_12 == 8,  37,
+    AGE_12 == 9,  42,
+    AGE_12 == 10, 47,
+    AGE_12 == 11, 52,
+    AGE_12 == 12, 57,
+    default = NA_real_
+)]
 
-## Creating our sets of Gini Coefficients
+# Province Indicators (using fifelse for speed)
+# Note: You could combine these into fewer lines if preferred,
+# but separating them is clear.
+LFS_data[, prov_nl := fifelse(PROV == 10, 1, 0)]
+LFS_data[, prov_pe := fifelse(PROV == 11, 1, 0)]
+LFS_data[, prov_ns := fifelse(PROV == 12, 1, 0)]
+LFS_data[, prov_nb := fifelse(PROV == 13, 1, 0)]
+LFS_data[, prov_qc := fifelse(PROV == 24, 1, 0)]
+LFS_data[, prov_mb := fifelse(PROV == 46, 1, 0)]
+LFS_data[, prov_sk := fifelse(PROV == 47, 1, 0)]
+LFS_data[, prov_ab := fifelse(PROV == 48, 1, 0)]
+LFS_data[, prov_bc := fifelse(PROV == 59, 1, 0)]
+# For ease of making regressions later
+province_dummies <- c("prov_nl", "prov_pe", "prov_ns", "prov_nb", "prov_qc", "prov_mb", "prov_sk", "prov_ab", "prov_bc")
 
-now we want to create time series of Gini cofficients for each of our "groups" of Canadians. First let's just quickly demonstrate the process by calculating the Gini coefficient for our whole dataset over the time series, using values for HRLYEARN. 
+# Union Status
+LFS_data[, union_member := fifelse(UNION == 1, 1, 0)]
+LFS_data[, union_contract := fifelse(UNION %in% c(1, 2), 1, 0)]
 
-```{r}
-# Ensure necessary packages are loaded (dplyr, tidyr, ineq, ggplot2)
-# These should be handled by the r_package_check_install artifact if run first
-# library(dplyr)
-# library(tidyr)
-# library(ineq)
-# library(ggplot2)
-# library(lubridate) # Potentially useful for date calculations, though base R used here
+# Immigration Status
+LFS_data[, newer_immigrant := fifelse(IMMIG == 1, 1, 0)]
+LFS_data[, older_immigrant := fifelse(IMMIG == 2, 1, 0)]
 
-# --- Create Age Group Labelling ---
-# Assuming 'raw_data' is your data frame with AGE_6 and AGE_12 columns
-raw_data <- raw_data %>%
-  mutate(
-    age_group = case_when(
-      # Ages 15-19 based on AGE_6
-      AGE_6 %in% c(1, 2) ~ "15-19",
-      # Ages 20-34 based on AGE_12
-      AGE_12 %in% c(2, 3, 4) ~ "20-34",
-      # Ages 35-54 based on AGE_12
-      AGE_12 %in% c(5, 6, 7, 8) ~ "35-54",
-      # Ages 55+ based on AGE_12
-      AGE_12 %in% c(9, 10, 11, 12) ~ "55+",
-      # Optional: Handle cases that don't fit any category (e.g., NA or other values)
-      TRUE ~ NA_character_ # Assign NA if none of the above conditions are met
-    ),
-    # Optional: Ensure the new column is a factor if preferred for analysis/plotting
-    # age_group = factor(age_group, levels = c("15-19", "20-34", "35-54", "55+"))
-  )
+# Cumulative Education Indicators
+LFS_data[, some_hs_plus := fifelse(EDUC >= 1, 1, 0)]
+LFS_data[, hs_grad_plus := fifelse(EDUC >= 2, 1, 0)]
+LFS_data[, some_ps_plus := fifelse(EDUC >= 3, 1, 0)]
+LFS_data[, ps_cert_plus := fifelse(EDUC >= 4, 1, 0)]
+LFS_data[, ba_plus := fifelse(EDUC >= 5, 1, 0)]
+LFS_data[, above_ba_plus := fifelse(EDUC == 6, 1, 0)]
 
-# --- Calculate Gini Coefficient Time Series by Age Group ---
-# Assuming 'raw_data' also contains 'months_from_start' and 'HRLYEARN'
+# Exclusive Education Indicators
+LFS_data[, zero_to_eight := fifelse(EDUC == 0, 1, 0)]
+LFS_data[, some_hs := fifelse(EDUC == 1, 1, 0)]
+LFS_data[, some_ps := fifelse(EDUC == 3, 1, 0)]
+LFS_data[, ps_cert := fifelse(EDUC == 4, 1, 0)]
+LFS_data[, ba := fifelse(EDUC == 5, 1, 0)]
+LFS_data[, above_ba := fifelse(EDUC == 6, 1, 0)]
+#for ease of regressions later
+education_dummies <- c("zero_to_eight", "some_hs", "some_ps", "ps_cert", "ba", "above_ba")
 
-# Check if the required columns exist (add checks if not already present)
-if (!all(c("months_from_start", "HRLYEARN", "age_group") %in% names(raw_data))) {
-  stop("Error: One or more required columns (months_from_start, HRLYEARN, age_group) not found in raw_data.")
-}
-# Ensure 'HRLYEARN' is numeric (add conversion if needed)
-if (!is.numeric(raw_data$HRLYEARN)) {
-   # Add robust numeric conversion here if not already done
-   warning("HRLYEARN column is not numeric. Ensure it's converted before this step.")
-}
+LFS_data[, naics_ForestryLogSupport := fifelse(NAICS_21 == 2, 1, 0)]
+LFS_data[, naics_FishingHuntTrap := fifelse(NAICS_21 == 3, 1, 0)]
+LFS_data[, naics_MiningOilGasExtract := fifelse(NAICS_21 == 4, 1, 0)]
+LFS_data[, naics_Utilities := fifelse(NAICS_21 == 5, 1, 0)]
+LFS_data[, naics_Construction := fifelse(NAICS_21 == 6, 1, 0)]
+LFS_data[, naics_MfgDurable := fifelse(NAICS_21 == 7, 1, 0)] # Manufacturing - durable goods
+LFS_data[, naics_MfgNonDurable := fifelse(NAICS_21 == 8, 1, 0)] # Manufacturing - non-durable goods
+LFS_data[, naics_Wholesale := fifelse(NAICS_21 == 9, 1, 0)]
+LFS_data[, naics_Retail := fifelse(NAICS_21 == 10, 1, 0)]
+LFS_data[, naics_TransportWarehousing := fifelse(NAICS_21 == 11, 1, 0)]
+LFS_data[, naics_FinanceInsurance := fifelse(NAICS_21 == 12, 1, 0)]
+LFS_data[, naics_RealEstateRentalLeasing := fifelse(NAICS_21 == 13, 1, 0)]
+LFS_data[, naics_ProfSciTech := fifelse(NAICS_21 == 14, 1, 0)] # Professional, scientific and technical services
+LFS_data[, naics_BusinessBuildingSupport := fifelse(NAICS_21 == 15, 1, 0)] # Business, building and other support services
+LFS_data[, naics_Educational := fifelse(NAICS_21 == 16, 1, 0)]
+LFS_data[, naics_HealthSocialAssist := fifelse(NAICS_21 == 17, 1, 0)] # Health care and social assistance
+LFS_data[, naics_InfoCultRec := fifelse(NAICS_21 == 18, 1, 0)] # Information, culture and recreation
+LFS_data[, naics_AccomFood := fifelse(NAICS_21 == 19, 1, 0)]
+LFS_data[, naics_OtherServices := fifelse(NAICS_21 == 20, 1, 0)]
+LFS_data[, naics_PublicAdmin := fifelse(NAICS_21 == 21, 1, 0)]
+
+# Compile the names of the created NAICS dummy variables into a vector (updated names)
+naics_dummies <- c(
+  "naics_ForestryLogSupport", "naics_FishingHuntTrap", "naics_MiningOilGasExtract", "naics_Utilities",
+  "naics_Construction", "naics_MfgDurable", "naics_MfgNonDurable", "naics_Wholesale",
+  "naics_Retail", "naics_TransportWarehousing", "naics_FinanceInsurance", "naics_RealEstateRentalLeasing",
+  "naics_ProfSciTech", "naics_BusinessBuildingSupport", "naics_Educational", "naics_HealthSocialAssist",
+  "naics_InfoCultRec", "naics_AccomFood", "naics_OtherServices", "naics_PublicAdmin"
+)
 
 
-gini_timeseries <- raw_data %>%
-  # Filter out rows where age_group or HRLYEARN is NA, as they can't be used
-  filter(!is.na(age_group), !is.na(HRLYEARN)) %>%
-  # Group data by the time period identifier AND age group
-  group_by(months_from_start, age_group) %>%
-  # Calculate the Gini coefficient for each subgroup
-  summarize(
-    # Use the Gini function from the 'ineq' package
-    gini_value = ineq::Gini(HRLYEARN, na.rm = TRUE), # na.rm = TRUE is still good practice
-    # Optional: Add a count of non-NA observations used for each calculation
-    n_observations = n(), # Use n() since we filtered NAs earlier
-    .groups = 'drop' # Drop grouping structure after summarize
-  ) %>%
-  # Reshape data from long to wide format
-  tidyr::pivot_wider(
-    id_cols = months_from_start, # Column(s) to keep as identifiers
-    names_from = age_group,      # Column whose values become new column names
-    values_from = c(gini_value, n_observations), # Column(s) whose values fill the new columns
-    names_sep = "_",             # Separator between value name and age group name
-    # Corrected prefix application: Apply prefix within names_glue or rename later
-    # Using names_glue for more control:
-    names_glue = "{age_group}_{.value}" # Creates names like 15-19_gini_value, 15-19_n_observations
-  ) %>%
-  # Arrange by time period for clarity
-  arrange(months_from_start)
 
-# --- Plot Gini Coefficients Over Time by Age Group ---
+# --- Create years_from_start ---
+# Assuming LFS_data exists and has SURVYEAR, SURVMNTH
+# Assuming the start month is January 2006 (index 1)
+LFS_data[, years_from_start := (SURVYEAR - 2006) + ifelse(SURVMNTH == 6, 0.5, 0)]
 
-# Check if gini_timeseries was created successfully and has data
-if (exists("gini_timeseries") && nrow(gini_timeseries) > 0) {
+# --- Create Dummy Variables and Store Names ---
 
-  # Reshape the data back to long format specifically for plotting Gini values
-  # AND add a Date column based on months_from_start (assuming 1 = Jan 2014)
-  gini_timeseries_long_for_plot <- gini_timeseries %>%
-    # Select the time column and columns ending with '_gini_value'
-    select(months_from_start, ends_with("_gini_value")) %>%
-    pivot_longer(
-      cols = ends_with("_gini_value"), # Select columns to lengthen
-      names_to = "age_group",          # New column for the original column names (e.g., "15-19_gini_value")
-      names_pattern = "(.*)_gini_value", # Extract the age group part before "_gini_value"
-      values_to = "gini_coefficient"   # New column for the Gini values
-    ) %>%
-    # Add a Date column
-    mutate(
-      # Calculate year and month based on months_from_start
-      year = 2014 + floor((months_from_start - 1) / 12),
-      month = ((months_from_start - 1) %% 12) + 1,
-      # Create a Date object for the first day of the calculated month/year
-      plot_date = as.Date(paste(year, month, 1, sep = "-"))
-    )
+# --- Method 1: Capture names DURING creation ---
+# Initialize an empty character vector to store the names
+yfs_dummy_names <- character(0) # Use a descriptive name for the vector
 
-  # Create the plot using ggplot2, mapping plot_date to x-axis
-  gini_plot <- ggplot(gini_timeseries_long_for_plot,
-                      aes(x = plot_date, y = gini_coefficient, color = age_group)) +
-    geom_line(linewidth = 1) + # Thicker line for visibility
-    geom_point(size = 1.5) +    # Add points
-    # Use scale_x_date for better control over date axis formatting
-    scale_x_date(
-        date_breaks = "1 year", # Major breaks every year
-        date_minor_breaks = "3 months", # Minor breaks every 3 months
-        date_labels = "%Y" # Display only the year for major breaks
-        # Alternative label formats: "%b %Y" (e.g., Jan 2014), "%Y-%m" (e.g., 2014-01)
-    ) +
-    labs(
-      title = "Gini Coefficient of Hourly Earnings Over Time by Age Group",
-      x = "Date", # Updated x-axis label
-      y = "Gini Coefficient",
-      color = "Age Group" # Legend title
-    ) +
-    theme_minimal(base_size = 12) + # Use a clean theme with slightly larger base font
-    theme(legend.position = "bottom") # Move legend below plot
+# Get unique non-NA values from the source column
+unique_vals <- sort(unique(na.omit(LFS_data$years_from_start)))
 
-  # Print the plot to display it
-  print(gini_plot)
+# Check if there are unique values to process
+if (length(unique_vals) > 0) {
+  print(paste("Starting loop to create", length(unique_vals), "dummy columns..."))
+
+  for (val in unique_vals) {
+    # Create a valid column name (e.g., yfs_0, yfs_0_5)
+    new_col_name <- paste0("yfs_", gsub("[^a-zA-Z0-9_]", "_", as.character(val)))
+
+    # *** Correctly append the generated name to the VECTOR ***
+    yfs_dummy_names <- c(yfs_dummy_names, new_col_name)
+
+    # Create the dummy column in LFS_data using fifelse
+    # This modifies LFS_data in place
+    LFS_data[, (new_col_name) := fifelse(years_from_start == val, 1L, 0L, na = 0L)]
+  }
+  print("Finished creating dummy columns.")
+  print("Dummy names captured in the vector 'yfs_dummy_names'")
+
+  # You can view the captured names:
+  # print(yfs_dummy_names)
 
 } else {
-  message("Skipping plot: 'gini_timeseries' data frame not found or is empty.")
+  print("No unique non-NA values found in 'years_from_start' to create dummies for.")
 }
+
+
+
+print("Finished creating dummy columns.")
+print("Dummy names captured in 'yfs_dummies'")
+# print(yfs_dummies) # View the captured names
+
+
+# --- Creating 'province_name' column from PROV code ---
+# Doing this to make creating subsets easier in next block
+LFS_data[, province_name := fcase(
+    PROV == 10, "Newfoundland and Labrador",
+    PROV == 11, "Prince Edward Island",
+    PROV == 12, "Nova Scotia",
+    PROV == 13, "New Brunswick",
+    PROV == 24, "Quebec",
+    PROV == 35, "Ontario",
+    PROV == 46, "Manitoba",
+    PROV == 47, "Saskatchewan",
+    PROV == 48, "Alberta",
+    PROV == 59, "British Columbia"
+)]
+
+# --- Creating Male/Female named variable --- 
+# See above
+LFS_data[, named_sex := fcase(
+    woman == 0, "Male",
+    woman == 1, "Female"
+)]
+
+# --- Creating Age Cohort named variable --- 
+# See above
+# The age groups are going to be 15-19, 20-34, 35-54, and then 55+ for simplicity
+LFS_data[, age_group := fcase(
+    AGE_12 == 1, "15_19",
+    AGE_12 %in% c(2, 3, 4), "20_34",
+    AGE_12 %in% c(5, 6, 7, 8), "35_54",
+    AGE_12 %in% c(9, 10, 11, 12), "55+",
+    default = NA_character_
+)]
+
+gc()
+```
+
+## Building a Model of Hourly Wages
+
+This section outlines the construction of a regression model used to determine the impact of key variables and controls on hourly earnings. As this model will be estimated by applying it to multiple waves of LFS data, year dummy variables will be included to account for time fixed-effects/year specific events. This model will be restricted to employed Canadians -- variations in unemployment and labour force participation will be covered later on.
+
+The dependent variable in these regressions will be the natural logarithm of hourly earnings, for easier interpretation of coefficients. The "base" or intercept observation, with respect to dummy variables, is a male high school graduate from Ontario who is not in a union, nor is covered by a union contract, who is not an immigrant, and who works in the Agriculture sector.
+
+```{r}
+#Note: make sure to overwrite regression outputs for memory efficiency, then print/store coefficients only -- cannot sustain full models.
+
+#let's work our way up to a more complete model, let's start by looking at how gender impacts hourly earnings. to start, no controls other than controlling for year will be included
+#create our formula with the dummies
+dummy_formula_part <- paste(yfs_dummy_names, collapse = " + ")
+full_formula_string <- paste("ln_income ~ woman +", dummy_formula_part)
+regression_formula <- as.formula(full_formula_string)
+reg <- lm(regression_formula, data = LFS_data)
+# To display without (in my opinion) ugly year dummies
+# 1. Get the full summary
+summary_reg <- summary(reg)
+# 2. Extract the coefficient table (it's a matrix)
+coef_table <- summary_reg$coefficients
+# 3. Find rows NOT starting with "yfs_" (your year dummy prefix)
+rows_to_keep <- !grepl("^yfs_", rownames(coef_table))
+# 4. Print the filtered table
+print("--- Filtered Coefficient Table (Excluding Year Dummies) ---")
+print(coef_table[rows_to_keep, ])
+
+
+#now let's adjust this to include province effects
+dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
+dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
+full_formula_string <- paste("ln_income ~ woman + ", dummy_formula_part1, " + ", dummy_formula_part2)
+regression_formula <- as.formula(full_formula_string)
+reg <- lm(regression_formula, data = LFS_data)
+# To display without (in my opinion) ugly year dummies
+# 1. Get the full summary
+summary_reg <- summary(reg)
+# 2. Extract the coefficient table (it's a matrix)
+coef_table <- summary_reg$coefficients
+# 3. Find rows NOT starting with "yfs_" (your year dummy prefix)
+rows_to_keep <- !grepl("^yfs_", rownames(coef_table))
+# 4. Print the filtered table
+print("--- Filtered Coefficient Table (Excluding Year Dummies) ---")
+print(coef_table[rows_to_keep, ])
+
+#now let's layer on educational attainment, using our "years of education" estimate generated from the LFS data -- we will make this expression polynomial, to account for the fact that a year of high school is likely different to a year of undergrad, which in turn is likely different from a year of a masters program -- the earlier years are potentially less impact in a world where EVERYONE is doing those earlier years of education -- this is likely one of those effects which will change over time. Yes we could do dummy variables for each level of education reported in the LFS data, but my regression output is starting to make my head swim when I look at it.
+dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
+dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
+dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
+full_formula_string <- paste("ln_income ~ woman + ", dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3)
+regression_formula <- as.formula(full_formula_string)
+reg <- lm(regression_formula, data = LFS_data)
+# To display without (in my opinion) ugly year dummies
+# 1. Get the full summary
+summary_reg <- summary(reg)
+# 2. Extract the coefficient table (it's a matrix)
+coef_table <- summary_reg$coefficients
+# 3. Find rows NOT starting with "yfs_" (your year dummy prefix)
+rows_to_keep <- !grepl("^yfs_", rownames(coef_table))
+# 4. Print the filtered table
+print("--- Filtered Coefficient Table (Excluding Year Dummies) ---")
+print(coef_table[rows_to_keep, ])
+
+# What really needed to happen on that third one is to include age before education, and perhaps to include an age X education interaction variable -- it seems confusing that people with some post secondary make less than people with just high school, until you remember that this includes students currently in undergrad who are working low-skill part-time jobs alongside their studies -- naturally a 20yo working at say a bookstore on the weekends part-time is making less than someone who graduated high school 20 years ago and is well into their career -- may adjust age to be a variable for years in the workforce. or just make it polynomial idk man. used AIC/BIC test for determining what my polynomial should be. Below is the commented out loop used to determine this using an Akaike Information Complexity score, yes cross-validation would be better but this method is quicker. While this test spat out a 7 degree model for age being the best, I decided to go with just a two degree model, for my sanity and also because the differences (to my relatively untrained eye, going off of magnitude of delta) in accuracy seem pretty insignificant to the performance of the model.
+# [1] "Degree: 1  | AIC: 2078527.82"
+# [1] "Degree: 2  | AIC: 1946251.48"
+# [1] "Degree: 3  | AIC: 1945863.93"
+# [1] "Degree: 4  | AIC: 1945822.22"
+# [1] "Degree: 5  | AIC: 1945277.52"
+# [1] "Degree: 6  | AIC: 1943317.28"
+# [1] "Degree: 7  | AIC: 1942993.31"
+# [1] "Degree: 8  | AIC: 1942994.52"
+
+# #loop to determine best # of poly terms
+# # --- Define Fixed Parts of the Formula ---
+# dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
+# dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
+# dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
+# all_dummies_string <- paste(dummy_formula_part1, dummy_formula_part2, dummy_formula_part3, sep = " + ")
+# # --- Loop to Find Best Polynomial Degree using AIC ---
+# # Set the maximum polynomial degree to test
+# max_degree <- 10 # You can adjust this value
+# aic_results <- data.frame(degree = integer(), AIC = numeric())
+# print(paste("--- Testing Polynomial Degrees 1 to", max_degree, "for rough_age_dock15 ---"))
+# for (degree in 1:max_degree) {
+#   # Using raw = TRUE to get simple polynomials (x, x^2, etc.)
+#   poly_term <- paste0("poly(rough_age_dock15, ", degree, ", raw = TRUE)")
+#   current_formula_string <- paste("ln_income ~ woman + ", poly_term, " + ", all_dummies_string)
+#   current_formula <- as.formula(current_formula_string)
+#   # Fit the linear model, handling potential errors
+#   current_model <- tryCatch({
+#       lm(current_formula, data = LFS_data)
+#   }, error = function(e) {
+#       warning(paste("Could not fit model for degree", degree, ":", e$message))
+#       NULL
+#   })
+#   # Calculate and store AIC if model fitting was successful
+#   if (!is.null(current_model)) {
+#       current_aic <- AIC(current_model)
+#       aic_results <- rbind(aic_results, data.frame(degree = degree, AIC = current_aic))
+#       print(paste("Degree:", degree, " | AIC:", round(current_aic, 2)))
+#   } else {
+#        aic_results <- rbind(aic_results, data.frame(degree = degree, AIC = NA))
+#        print(paste("Degree:", degree, " | AIC: Failed to compute"))
+#   }
+# }
+# # Find the degree with the minimum AIC
+# best_degree <- aic_results$degree[which.min(aic_results$AIC)]
+# print(paste("--- Best Polynomial Degree based on AIC:", best_degree, "---"))
+# # --- Construct Final Formula using Best Degree ---
+# final_poly_term <- paste0("poly(rough_age_dock15, ", best_degree, ", raw = TRUE)")
+# full_formula_string <- paste("ln_income ~ woman + ", final_poly_term, " + ", all_dummies_string)
+# regression_formula <- as.formula(full_formula_string)
+# # --- Run Final Regression Model ---
+# print("--- Running Final Regression with Selected Degree ---")
+# reg <- lm(regression_formula, data = LFS_data)
+# # --- Filtering and Displaying Coefficients (Excluding Year Dummies) ---
+# summary_reg <- summary(reg)
+# coef_table <- summary_reg$coefficients
+# # Find rows NOT starting with "yfs_" (your year dummy prefix)
+# rows_to_keep <- !grepl("^yfs_", rownames(coef_table))
+# print("--- Filtered Coefficient Table (Excluding Year Dummies) ---")
+# print(coef_table[rows_to_keep, ])
+# #end of loop
+
+#adjusting for age above 15 years (where the age for the LFS starts) -- will make this a 2 degree set of terms.
+dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
+dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
+dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
+full_formula_string <- paste("ln_income ~ woman + poly(rough_age_dock15, 2, raw=TRUE) + ",
+                             dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3)
+regression_formula <- as.formula(full_formula_string)
+reg <- lm(regression_formula, data = LFS_data)
+summary_reg <- summary(reg)
+coef_table <- summary_reg$coefficients
+rows_to_keep <- !grepl("^yfs_", rownames(coef_table))
+print("--- Filtered Coefficient Table (Excluding Year Dummies) ---")
+print(coef_table[rows_to_keep, ])
+
+#next let's throw in some more variables such as being covered by a union contract, immigration status, and industry sector, by NAICS_21 -- I like this splitting of sectors as it is general enough to allow for variation in educational attainment (ie not correlating so heavy with education so as to be hard to discern impact), and also because the way they're defined seems like they will capture some of the variation in industry performance over the years.
+
+dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
+dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
+dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
+dummy_formula_part4 <- paste(naics_dummies, collapse = " + ")
+full_formula_string <- paste("ln_income ~ woman + poly(rough_age_dock15, 2, raw=TRUE) + newer_immigrant + older_immigrant + union_contract + ",
+                             dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3, " + ", dummy_formula_part4)
+regression_formula <- as.formula(full_formula_string)
+reg <- lm(regression_formula, data = LFS_data)
+summary(reg)
 
 
 
 ```
 
-## Findings from simple regressions
+## Group Creation
 
-Here we see some evidence that women make less, on average, then men do in the Canadian labour force. The aim of this paper is not to investigate whether and how there is gender discrimination, but rather to determine whether the gender wage gap varies with the business cycle -- during recessionary periods do we see women get laid off first? Let's build a separate data frame for our "macro" variables: % change in Real GDP, % change in Real GDP per Capita, and just for fun lets also throw in the inflation rate, a measure of inequality (gini coefficient), and overall labour participation and unemployment rates to compare our LFS data to. We can then map on these values into our original dataset -- for example, gdp growth data is reported quarterly, we can mutate a new variable in such that if year == 20xx and month == c(a, b, c) = growth value for that quarter.
+To make this next part easier, subsets of our LFS_data dataframe can be created. Think of a fork in the road type structure -- the order will be as follows: fork by province, fork by gender, then fork by age. Later on when retrieving our subsetted data, the syntax to retrieve will be: subsetted_data\$PROVINCE\$SEX\$AGE
 
-``` {r}
+```{r}
+#create a list of province based subsets
+province_subset_list <- split(LFS_data, LFS_data$province_name) #to retrieve subset, province_subset_list$PROVINCE
+
+#now inception style we split again based on sex
+province_sex_subset_list <- lapply(province_subset_list, function(subset_prov) {
+  split(subset_prov, subset_prov$named_sex) #to retrieve subset, province_sex_subset_list$PROVINCE$SEX
+})
+
+#third layer, we now divide the aforementioned subsets into out four age categories
+subsetted_data <- lapply(province_sex_subset_list, function(subset_prov) {
+  lapply(subset_prov, function(subset_prov_sex){
+    split(subset_prov_sex, subset_prov_sex$age_group) #to retrieve subset, province_sex_age_subset_list$PROVINCE$SEX$AGEGROUP
+  })
+})
 
 ```
 
@@ -298,13 +533,14 @@ Here we see some evidence that women make less, on average, then men do in the C
 
 As this paper is using the publicly available LFS data, certain information is excluded -- thanks to this there are no observations for the Territories, nor is there any access to ethnicity/race variables. Finally, the standard scope of the LFS applies: full time members of the armed forces, people living on reserves, institutionalized persons, and those under the age of 15 are excluded.
 
-## ChatGPT Disclosure:
+## AI Disclosures:
 
-Through the course of this project, I utilized Gemini. Below are chat links, organized by theme/part of the project the chat is relevant:
+Through the course of this project, I utilized Gemini. Unlike ChatGPT Gemini does not provide an easy way to share the whole chat, so I've included some sample queries and responses and wrote a quick blurb explaining how the tools were used.
 
-set-up: <https://g.co/gemini/share/085ca32bc3d4>
-This was crucial, only noticed that I was doing a very inefficient way to merge the csv files when I swapped from working on my desktop with 64Gb of RAM to my MacBook with 16Gb lol. I also used it to make a little loop function for loading the packages, just to make it easier to add new packages I want to use as I go through the project.
+set-up: <https://g.co/gemini/share/085ca32bc3d4>, <https://g.co/gemini/share/429555247dcd> This was crucial, only noticed that I was doing a very inefficient way to merge the csv files when I swapped from working on my desktop with 64Gb of RAM to my MacBook with 16Gb lol. I also used it to make a little loop function for loading the packages, just to make it easier to add new packages I want to use as I go through the project. I actually wound up just taking sample observations twice a year -- I wanted to use all 13+ million observations over the period, but having to reprogram/adjust how I did so many things to stop hitting memory limits just got tiresome.
 
-general writing: <https://chatgpt.com/share/67eebc76-c988-8010-801d-fbc4827958f2>
+general writing: <https://chatgpt.com/share/67eebc76-c988-8010-801d-fbc4827958f2> I chiefly use this as a tool to help catch where I have been unprofessional/super casual in my writing -- I paste a section of my text into the LLM and then I ask it to point out areas for improvement, then I go back and edit it, and so on and so forth in a recursive process till I'm happy with the result/the AI is just splitting hairs. The key improvement here is that I bug friends and family less with requests to read over things.
 
-general code and data-set questions: <https://chatgpt.com/share/67eebc87-d4a0-8010-9c20-69841f956c4d>
+general code and data-set questions: <https://g.co/gemini/share/cc0925dc8fb8>, <https://g.co/gemini/share/6866b019b792> <https://g.co/gemini/share/898697efa94a>
+
+Main workflow for code corrections is to boot up a chat with Gemini, say hey I'm working in R in a markdown file, can you correct this chunk of code for me? I tried Cursor (an AI integrated IDE) but found that it just made it too tempting/easy to vibecode the whole thing and not know what each part of my code even does. Going chunk by chunk I found made it so that AI was helping my weaker knowledge of R syntax, but that I was still responsible for the overall structure of my code and for deciding how to structure, say, my subgroups and analysis. (The question is "Hey how can I made subsets by a variable" not "Here's the file: create subsets by what variables you think are best to divvy up the population)
