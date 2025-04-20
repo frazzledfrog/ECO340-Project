@@ -129,7 +129,7 @@ As this data is not like the NLSY in that it follows the same people over the ye
 
 To make analysis easier, some new variables will be created to make an easier time of things. Variables which give multiple categories in numeric form, for example province codes, will be converted to binary dummy variables. The variables that will be converted in this fashion are: gender, re-coding from 1 & 2 to 0 & 1; union status, breaking the "union member" "union contract" and "neither" into two dummy variables for "union member" and "union contract"; the aformentioned provinces, creating 9 dummy variables with Ontario being the reference province; education, creating two sets of dummy variables one being a culmulative set (ie each person only has one dummy variable that's in the on position) and the other being individual (ie someone with a college education has college turned on as well as every switch before); age, recoded to be an approximate age using both AGE12 and AGE6 data to maximize precision; LFSSTAT, recoded from a 1, 2, 3, 4 to a "in labour force", "is employed", and "absent from work" dummies; immigrant similarly into two dummies, one for recent immigrant one for established immigrant; year and month data into months from start of data-set (I changed directions so didn't really use this). Also creating a logarithmic version of hourly earnings so that regressions can be easily interpereted.
 
-```{r}
+```{r echo=FALSE}
 #For simplicity we will break down the variable LFSSTAT into an Employed binary variable and an in labour force variable. Let's label these is_employed and in_lf -- using these we can more easily down the line calculated changing unemployment rates and labour force participation rates.
 #Gender in the LFS datafile is expressed as either a 1 for men and 2 for women, stored as GENDER. We will create a new variable, woman, which will be a binary variable -- 0 for men, 1 for women.
 #as opposed to using province codes, I have created new binary variables for the 9 provinces which aren't Ontario. Because I am biased, I will be using Ontario as the default.
@@ -333,7 +333,7 @@ This section outlines the construction of a regression model used to determine t
 
 The dependent variable in these regressions will be the natural logarithm of hourly earnings, for easier interpretation of coefficients. The "base" or intercept observation, with respect to dummy variables, is a male high school graduate from Ontario who is not in a union, nor is covered by a union contract, who is not an immigrant, and who works in the Agriculture sector.
 
-```{r}
+``` {r echo=FALSE}
 #Note: make sure to overwrite regression outputs for memory efficiency, then print/store coefficients only -- cannot sustain full models.
 
 # Store the models for comparison
@@ -342,27 +342,34 @@ models <- list()
 # Model 1: Basic with gender and year effects only
 dummy_formula_part <- paste(yfs_dummy_names, collapse = " + ")
 regression_formula <- as.formula(paste("ln_income ~ woman +", dummy_formula_part))
+# Fit the linear model using lm function
 models[[1]] <- lm(regression_formula, data = LFS_data)
 
 # Model 2: Adding province effects
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
 dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
+# Construct the formula string dynamically
 regression_formula <- as.formula(paste("ln_income ~ woman + ", dummy_formula_part1, " + ", dummy_formula_part2))
+# Fit the linear model
 models[[2]] <- lm(regression_formula, data = LFS_data)
 
 # Model 3: Adding education effects
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
 dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
 dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
+# Construct the formula string dynamically
 regression_formula <- as.formula(paste("ln_income ~ woman + ", dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3))
+# Fit the linear model
 models[[3]] <- lm(regression_formula, data = LFS_data)
 
 # Model 4: Adding age polynomial
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
 dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
 dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
+# Construct the formula string including a polynomial term for age
 regression_formula <- as.formula(paste("ln_income ~ woman + poly(rough_age_dock15, 2, raw=TRUE) + ",
-                             dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3))
+                                     dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3))
+# Fit the linear model
 models[[4]] <- lm(regression_formula, data = LFS_data)
 
 # Model 5: Full model with union, immigration, and industry sectors
@@ -370,14 +377,22 @@ dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
 dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
 dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
 dummy_formula_part4 <- paste(naics_dummies, collapse = " + ")
+# Construct the formula string for the full model
 regression_formula <- as.formula(paste("ln_income ~ woman + poly(rough_age_dock15, 2, raw=TRUE) + newer_immigrant + older_immigrant + union_contract + ",
-                             dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3, " + ", dummy_formula_part4))
+                                     dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3, " + ", dummy_formula_part4))
+# Fit the linear model
 models[[5]] <- lm(regression_formula, data = LFS_data)
 
-# Define model names to include all 5 models
+# Define model names to include all 5 models for the summary table
 model_names <- c("Gender Only", "Add Provinces", "Add Education", "Add Age", "Full Model")
 
-# Create a custom coefficient map including immigration and union status
+# *** Add names to the models list ***
+# This assigns the defined names to the list elements,
+# which modelsummary uses as column headers.
+names(models) <- model_names
+
+# Create a custom coefficient map for renaming variables in the output table
+# This map improves readability of the regression table
 coef_map <- c(
   "woman" = "Female",
   "poly(rough_age_dock15, 2, raw = TRUE)1" = "Age",
@@ -385,33 +400,32 @@ coef_map <- c(
   "newer_immigrant" = "Recent Immigrant (≤10yrs)",
   "older_immigrant" = "Established Immigrant (>10yrs)",
   "union_contract" = "Union Coverage",
-  
-  # Keep only key education variables
+
+  # Keep only key education variables for brevity
   "zero_to_eight" = "Education: 0-8 years",
   "ba" = "Education: Bachelor's degree",
   "above_ba" = "Education: Above bachelor's",
-  
-  # Only selected provinces
+
+  # Only selected provinces for brevity
   "prov_qc" = "Quebec",
   "prov_ab" = "Alberta",
   "prov_bc" = "British Columbia",
-  
-  # Three selected industry sectors
+
+  # Three selected industry sectors for brevity
   "naics_MiningOilGasExtract" = "Industry: Mining & Oil Extraction",
   "naics_FinanceInsurance" = "Industry: Finance & Insurance",
   "naics_HealthSocialAssist" = "Industry: Healthcare & Social Assist."
 )
 
 # Create table with modelsummary and set model names explicitly
-modelsummary(models, 
+# modelsummary generates a summary table of regression models
+modelsummary(models, # Pass the NAMED list of models
              title = "Log Wage Regressions with Different Specifications",
-             stars = TRUE,
-             coef_map = coef_map,
-             gof_map = c("nobs", "r.squared", "adj.r.squared"),
-             notes = "Year fixed effects included in all models. Ontario is the reference province.",
-             output = "html")
-
-
+             stars = TRUE, # Add significance stars
+             coef_map = coef_map, # Apply the custom coefficient names
+             gof_map = c("nobs", "r.squared", "adj.r.squared"), # Select goodness-of-fit statistics
+             notes = "Year fixed effects included in all models. Ontario is the reference province. Full range of dummy variables not shown for ease of viewing", # Add notes to the table
+             output = "html") # Specify HTML output format
 
 ```
 
@@ -420,16 +434,18 @@ modelsummary(models,
 To make this next part easier, subsets of our LFS_data dataframe can be created. Think of a fork in the road type structure -- the order will be as follows: fork by province, fork by gender, then fork by age. Later on when retrieving our subsetted data, the syntax to retrieve will be: subsetted_data\$PROVINCE\$SEX\$AGE
 
 ```{r}
+gc()
+rm(models) #memory constrained, need to drop prior bulky derived data
 #create a list of province based subsets
-province_subset_list <- split(LFS_data, LFS_data$province_name) #to retrieve subset, province_subset_list$PROVINCE
+subsetted_data <- split(LFS_data, LFS_data$province_name) #to retrieve subset, province_subset_list$PROVINCE
 
 #now inception style we split again based on sex
-province_sex_subset_list <- lapply(province_subset_list, function(subset_prov) {
-  split(subset_prov, subset_prov$named_sex) #to retrieve subset, province_sex_subset_list$PROVINCE$SEX
+subsetted_data <- lapply(subsetted_data, function(subset_prov) {
+  split(subset_prov, subset_prov$named_sex) #to retrieve subset, subsetted_data$PROVINCE$SEX
 })
 
 #third layer, we now divide the aforementioned subsets into out four age categories
-subsetted_data <- lapply(province_sex_subset_list, function(subset_prov) {
+subsetted_data <- lapply(subsetted_data, function(subset_prov) {
   lapply(subset_prov, function(subset_prov_sex){
     split(subset_prov_sex, subset_prov_sex$age_group) #to retrieve subset, province_sex_age_subset_list$PROVINCE$SEX$AGEGROUP
   })
