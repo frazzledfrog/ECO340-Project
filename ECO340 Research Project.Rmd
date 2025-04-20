@@ -468,3 +468,121 @@ general writing: <https://chatgpt.com/share/67eebc76-c988-8010-801d-fbc4827958f2
 general code and data-set questions: <https://g.co/gemini/share/cc0925dc8fb8>, <https://g.co/gemini/share/6866b019b792> <https://g.co/gemini/share/898697efa94a>
 
 Main workflow for code corrections is to boot up a chat with Gemini, say hey I'm working in R in a markdown file, can you correct this chunk of code for me? I tried Cursor (an AI integrated IDE) but found that it just made it too tempting/easy to vibecode the whole thing and not know what each part of my code even does. Going chunk by chunk I found made it so that AI was helping my weaker knowledge of R syntax, but that I was still responsible for the overall structure of my code and for deciding how to structure, say, my subgroups and analysis. (The question is "Hey how can I made subsets by a variable" not "Here's the file: create subsets by what variables you think are best to divvy up the population)
+
+``` {r}
+
+# First, clean up memory to ensure we have space for calculations
+gc()
+
+# Create a function to calculate Gini coefficient for each subset by year
+calculate_gini_by_year <- function(data_subset) {
+  # If subset is empty or has too few observations, return NA
+  if (is.null(data_subset) || nrow(data_subset) < 10) {
+    return(data.frame(years_from_start = numeric(0), gini = numeric(0)))
+  }
+  
+  # Group by years_from_start and calculate Gini
+  result <- data_subset[!is.na(HRLYEARN), .(
+    gini = ineq::ineq(HRLYEARN, type="Gini"),
+    count = .N
+  ), by = years_from_start]
+  
+  # Filter out years with too few observations
+  result <- result[count >= 30]
+  return(result[, .(years_from_start, gini)])
+}
+
+# Initialize a data frame to store all results
+gini_results <- data.frame(
+  province = character(),
+  sex = character(),
+  age_group = character(),
+  years_from_start = numeric(),
+  gini = numeric()
+)
+
+# Process each subset and calculate Gini coefficient
+for (province_name in names(subsetted_data)) {
+  for (sex_name in names(subsetted_data[[province_name]])) {
+    for (age_name in names(subsetted_data[[province_name]][[sex_name]])) {
+      # Calculate Gini for this subset
+      subset_gini <- calculate_gini_by_year(
+        subsetted_data[[province_name]][[sex_name]][[age_name]]
+      )
+      
+      # If we have results, add them to our main results dataframe
+      if (nrow(subset_gini) > 0) {
+        subset_gini_df <- data.frame(
+          province = province_name,
+          sex = sex_name,
+          age_group = age_name,
+          years_from_start = subset_gini$years_from_start,
+          gini = subset_gini$gini
+        )
+        gini_results <- rbind(gini_results, subset_gini_df)
+      }
+      
+      # Periodically clean memory
+      if (nrow(gini_results) %% 100 == 0) gc()
+    }
+  }
+}
+
+# Convert years_from_start to actual years for better visualization
+gini_results$year <- 2006 + gini_results$years_from_start
+
+# Save results to avoid recalculation
+write.csv(gini_results, "gini_coefficients_by_group.csv", row.names = FALSE)
+
+# Create national time series (all provinces combined)
+ggplot(gini_results, aes(x = year, y = gini, color = sex, linetype = age_group)) +
+  stat_summary(fun = mean, geom = "line") +
+  labs(title = "Income Inequality (Gini) Trends by Gender and Age",
+       subtitle = "All Provinces Combined",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Gender",
+       linetype = "Age Group") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0.2, 0.5)) # Adjust limits as needed
+
+# Create time series by province
+ggplot(gini_results, aes(x = year, y = gini, color = sex, linetype = age_group)) +
+  stat_summary(fun = mean, geom = "line") +
+  facet_wrap(~ province) +
+  labs(title = "Income Inequality (Gini) Trends by Province, Gender, and Age",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Gender",
+       linetype = "Age Group") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(limits = c(0.2, 0.5)) # Adjust limits as needed
+
+# Create time series by age group
+ggplot(gini_results[gini_results$age_group != "15_19", ], aes(x = year, y = gini, color = province)) +
+  geom_line() +
+  facet_grid(sex ~ age_group) +
+  labs(title = "Income Inequality (Gini) Trends by Age Group and Gender",
+       subtitle = "Excludes 15-19 age group with high volatility",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Province") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Create combined visualization showing overall trends
+# Focus on the working-age population (20-54)
+working_age <- gini_results[gini_results$age_group %in% c("20_34", "35_54"), ]
+
+ggplot(working_age, aes(x = year, y = gini, color = sex)) +
+  stat_summary(fun = mean, geom = "line", size = 1.2) +
+  geom_smooth(method = "loess", se = TRUE, alpha = 0.2) +
+  labs(title = "Income Inequality Trends in Working-Age Population (20-54)",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Gender") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1")
+```
