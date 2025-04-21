@@ -1,5 +1,5 @@
 ---
-title: "Income Inequality and Labour Market Outcomes in Canada 2000-2024"
+title: "Income Inequality and Labour Market Outcomes in Canada 2006-2024"
 author: "Alex McKeown"
 date: "2025-03-29"
 output:
@@ -138,9 +138,7 @@ if (length(csv_files) == 0) {
 
 # Introduction
 
-Over the years, Canada's Gini coefficient with respect to income has fluctuated. This analysis endeavours to show if there have been any meaningful trends in inequities within different age and gender groupings of the Canadian population. The first part of this analysis will be concerned with the Gini coeffients for each age group plotted over the past 24 years, using data from the Canadian Labour Force Survey (LFS) from March 2000 through to March 2024. The second part of the analysis will be looking at trends in unemployment and labour force participation over this same period of time for each group.
-
-As this data is not like the NLSY in that it follows the same people over the years, this will not be a generational/cohort study, i.e., the age brackets will remain fixed and over the years the cohorts will move through them. As well, as this analysis is using the publicly available version of the LFS, data is not provided on race or certain other potentially identifying characteristics.
+This analysis hopes to help better unpack income inequality in the Canadian context. This analysis investigates trends in income inequality within different groupings of Labour Force Survey (LFS) observations over a near eighteen year period, from January 2006 to June 2024 – every 6th month of LFS data was used for this analysis, to put less stress on memory constraints. Using this data, a multivariable regression model to predict hourly earnings based on key variables was built. Then, using this model to identify potentially interesting areas of difference, subsets of the LFS survey sample were constructed, creating a time series of Gini coefficients for hourly income within each group selected. For instance, comparing trends over time for the Gini coefficient within the male population versus the female population. It is important to note that this report uses the Public Use Microdata File (PUMF) which contains less information than the full data – the PUMF omits information such as race, city/municipality located, etc. As well, the LFS is a repeated cross-section of the population, it is not a cohort study like the National Longitudinal Survey of Youth (NLSY) conducted by the US Bureau of Labour Statistics, so techniques applicable to that dataset, such as a fixed effect model, are not applicable here.
 
 # Data Cleaning and Variable Creation
 
@@ -265,16 +263,18 @@ invisible(gc())
 
 To make analysis easier, I created several derived variables from the raw LFS data. Variables with multiple categories in numeric form, such as province codes, were converted to binary dummy variables. The key transformations include:
 
-- Gender: re-coded from 1 & 2 to 0 & 1 for regression analysis
-- Union status: created separate indicators for union membership and being covered by a union contract
-- Provinces: created 9 dummy variables with Ontario as the reference province
-- Education: created dummy variables, one for each level of education
-- Age: approximated using AGE12 variable, creating a running variable and creating four age brackets for dividing up sample later on (15-19, 20-34, 35-54, and 55+)
-- Labour force status: converted LFSSTAT into binary indicators for employment and labour force participation
-- Immigration status: created indicators for recent immigrants (≤10 years) and established immigrants
-- Income: created a logarithmic version of hourly earnings for easier interpretation in regressions
+-   Gender: re-coded from 1 & 2 to 0 & 1 for regression analysis
+-   Union status: created separate indicators for union membership and being covered by a union contract
+-   Provinces: created 9 dummy variables with Ontario as the reference province
+-   Education: created dummy variables, one for each level of education save the reference, which I set to high school grad rather than 0-8 years as I feel it is more intuitive when interpreting regression results – we don’t care as much about how college impacts earnings relative to someone who didn’t complete highschool.
+-   Age: approximated using AGE12 variable, creating a running variable and labels for subsetting later on
+-   Labour force status: converted LFSSTAT into two dummies for employment and labour force participation
+-   Immigration status: created dummy variables for recent immigrants (≤10 years) and established immigrants
+-   Income: created a logarithmic version of hourly earnings for easier interpretation in regressions
 
-These transformations allow for more efficient analysis and interpretation of results in subsequent sections.
+The data.table package was used rather than the mutate function. The reason for this is because initially, I was stubbornly trying to do this analysis using every month of LFS survey data from 2006 through to the most recent release. In hindsight, that was a really silly decision, and I should have done this approach of looking at every few waves from the get go. Alternatively, I could have taken a sample of each sample, though this may wind up introducing different biases into the data, if say certain smaller provinces were under-represented (alternatively alternatively I could have swapped from working on my dated MacBook to a more powerful machine with 8x the RAM, but keeping myself constrained both a) encourages sensible code & optimization for memory and b) makes sure that whoever reads this can run the code on their machine).
+
+
 
 # Wage Determinants: Regression Analysis
 
@@ -339,6 +339,7 @@ names(models) <- model_names
 
 # Create a custom coefficient map for the table
 coef_map <- c(
+  "(Intercept)" = "Intercept",
   "woman" = "Female",
   "poly(rough_age_dock15, 2, raw = TRUE)1" = "Age",
   "poly(rough_age_dock15, 2, raw = TRUE)2" = "Age²",
@@ -371,6 +372,42 @@ modelsummary(models,
              notes = "Year fixed effects included in all models. Ontario is the reference province. Full range of dummy variables not shown for ease of viewing",
              output = "html")
 
+
+```
+
+```{r all-models-full-comparison-collapsible, echo=FALSE, results='asis'}
+## Comparison of All Regression Models (Collapsible)
+# This chunk generates a collapsible HTML table comparing all regression models
+# and displaying all coefficients.
+# The code itself is hidden (echo=FALSE).
+# results='asis' allows us to print raw HTML tags directly.
+
+# Ensure the models list exists and contains models
+if (!exists("models") || length(models) == 0) {
+  stop("Regression models not found. Please ensure the 'wage-regressions' chunk ran successfully.")
+}
+
+# Start the collapsible section using HTML <details> tag
+cat('<details>')
+# Add a summary line that the user clicks to expand/collapse
+cat('<summary>Click to show/hide the full comparison table of all models</summary>')
+
+# Generate the modelsummary comparison table for ALL models.
+# Omit coef_map to show all coefficients.
+# With output='html' and results='asis', modelsummary prints the
+# HTML table code directly into the document at this point.
+modelsummary(models, # Pass the list of all models
+             title = "Comparison of All Log Wage Regression Models (Full Coefficients)",
+             stars = TRUE,
+             gof_map = c("nobs", "r.squared", "adj.r.squared"),
+             notes = "Includes all dummy variables (Year, Province, Education, Industry) where included in the model. Reference categories: Ontario, High School Graduate, Agriculture.",
+             output = "html")
+
+# End the collapsible section with the closing </details> tag
+cat('</details>')
+```
+
+``` {r}
 # Clear models to free memory
 rm(models, model_names, coef_map)
 invisible(gc())
@@ -380,19 +417,19 @@ invisible(gc())
 
 The regression results above show how different factors influence hourly wages in Canada. Key observations include:
 
-1. **Gender Wage Gap**: Across all specifications, women earn less than men, though the gap changes a bit depending on what controls are added. As this gap is persistent, for our later analysis of Gini coefficients between groups, it seems wise to create different groups for women and men.
+1.  **Gender Wage Gap**: Across all specifications, women earn less than men, though the gap changes a bit depending on what controls are added. As this gap is persistent, for our later analysis of Gini coefficients between groups, it seems wise to create different groups for women and men.
 
-2. **Provincial Variation**: Substantial differences exist across provinces, with Alberta showing a wage premium and Quebec showing somewhat lower wages compared to Ontario (the reference province). While the Federal government through income taxes and other means of taxation has a large role to play in combating inequality, it seems pertinent to divide by provinces as well, as there are differences in provincial services, cost of living, sectors, etc.
+2.  **Provincial Variation**: Substantial differences exist across provinces, with Alberta showing a wage premium and Quebec showing somewhat lower wages compared to Ontario (the reference province). While the Federal government through income taxes and other means of taxation has a large role to play in combating inequality, it seems pertinent to divide by provinces as well, as there are differences in provincial services, cost of living, sectors, etc.
 
-3. **Education Premium**: Higher education levels are associated with substantially higher wages, with the greatest returns to Bachelor's and advanced degrees. This seems like a source of inequity between workers which we do want to capture.
+3.  **Education Premium**: Higher education levels are associated with substantially higher wages, with the greatest returns to Bachelor's and advanced degrees. This seems like a source of inequity between workers which we do want to capture.
 
-4. **Age Effects**: Wages follow a concave pattern with age, increasing at a decreasing rate and eventually plateauing. If inequalities are caused by life cycles, young workers make less than older workers for example, that's not too problematic to most, young or old, because the young workers will one day be those older workers. Thus in our analysis of Gini coefficients, we will be dividing into age groups. 
+4.  **Age Effects**: Wages follow a concave pattern with age, increasing at a decreasing rate and eventually plateauing. If inequalities are caused by life cycles, young workers make less than older workers for example, that's not too problematic to most, young or old, because the young workers will one day be those older workers. Thus in our analysis of Gini coefficients, we will be dividing into age groups.
 
-5. **Immigration Status**: Recent immigrants face a wage penalty that persists even after controlling for education and industry. This may be due a variety of factors, we will examine this later on. 
+5.  **Immigration Status**: Recent immigrants face a wage penalty that persists even after controlling for education and industry. This may be due a variety of factors, we will examine this later on.
 
-6. **Union Coverage**: Union contracts are associated with higher wages, reflecting the collective bargaining premium. This does not seem like an important distinction to make in analysis of Gini coefficients -- if say, union membership is on the decline, but unions are still powerful and give the fewer workers in them a much greater wage, we would want to see that in data for Gini coefficients of say 25-34 year olds. 
+6.  **Union Coverage**: Union contracts are associated with higher wages, reflecting the collective bargaining premium. This does not seem like an important distinction to make in analysis of Gini coefficients -- if say, union membership is on the decline, but unions are still powerful and give the fewer workers in them a much greater wage, we would want to see that in data for Gini coefficients of say 25-34 year olds.
 
-7. **Industry Effects**: Significant wage differences exist across industries, with Mining & Oil Extraction and Finance & Insurance offering premiums compared to the Agriculture sector (the reference industry). For the same reason given as with education premiums, this is something which should be included when looking at Gini coefficients for certain segments.
+7.  **Industry Effects**: Significant wage differences exist across industries, with Mining & Oil Extraction and Finance & Insurance offering premiums compared to the Agriculture sector (the reference industry). For the same reason given as with education premiums, this is something which should be included when looking at Gini coefficients for certain segments.
 
 # Income Inequality Analysis
 
