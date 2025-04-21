@@ -2960,8 +2960,8 @@ max-width: 8.5in;
 margin: auto;
 }
 </style>
-<div id="introduction" class="section level1" number="1">
-<h1><span class="header-section-number">1</span> Introduction</h1>
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
 <p>This analysis hopes to help better unpack income inequality in the
 Canadian context. This analysis investigates trends in income inequality
 within different groupings of Labour Force Survey (LFS) observations
@@ -2983,9 +2983,8 @@ conducted by the US Bureau of Labour Statistics, so techniques
 applicable to that dataset, such as a fixed effect model, are not
 applicable here.</p>
 </div>
-<div id="data-cleaning-and-variable-creation" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> Data Cleaning and
-Variable Creation</h1>
+<div id="data-cleaning-and-variable-creation" class="section level1">
+<h1>Data Cleaning and Variable Creation</h1>
 <p>To make analysis easier, I created several derived variables from the
 raw LFS data. Variables with multiple categories in numeric form, such
 as province codes, were converted to binary dummy variables. The key
@@ -3025,24 +3024,68 @@ both a) encourages sensible code &amp; optimization for memory and b)
 makes sure that whoever reads this can run the code on their
 machine).</p>
 </div>
-<div id="wage-determinants-regression-analysis" class="section level1" number="3">
-<h1><span class="header-section-number">3</span> Wage Determinants:
-Regression Analysis</h1>
+<div id="wage-determinants-regression-analysis-methodology" class="section level1">
+<h1>Wage Determinants: Regression Analysis Methodology</h1>
 <p>This section examines the impact of key variables and controls on
 hourly earnings. As this model is estimated by applying it to multiple
-waves of LFS data, year dummy variables are included to account for time
-fixed-effects and year-specific events. The analysis is restricted to
-employed Canadians, with variations in unemployment and labour force
-participation covered later.</p>
+waves of LFS data, which are cross-sections of the population rather
+than a cohort study like the NLSY, year dummy variables are included to
+account for time fixed-effects and year-specific events. The analysis is
+restricted to employed Canadians, one deficit of this analysis is that
+the unemployment rate &amp; labour force participation rate could belie
+interest shifts in the labour market – if there is declining inequality
+of income distribution among employed Canadian, but this is accompanied
+by a sharp rise in the unemployment rate, has equality of earnings
+distribution really improved?</p>
 <p>The purpose of this section is not to derive any profound insights
 into the determinants of wages in Canada, rather the goal is to create a
 starting point for how we can divide up our sample to compare the trends
-of Gini coefficents over time.</p>
-<p>The dependent variable in these regressions is the natural logarithm
-of hourly earnings, for easier interpretation of coefficients. The
-“base” or intercept observation is a male high school graduate from
-Ontario who is not in a union, nor is covered by a union contract, nor
-is an immigrant, and works in the Agriculture sector.</p>
+of Gini coefficients over time. The dependent variable in these
+regressions is the natural logarithm of hourly earnings, for easier
+interpretation of coefficients. The “base” or intercept observation in
+the final model (and thus for relevant terms, all models) is: Part of
+the June 2024 LFS Male Not an immigrant Not covered by a union contract
+Graduated from highschool From Ontario Working in the Agriculture
+Industry 15 years old (Age is a discrete running variable based on age
+bracket midpoints)</p>
+<p>To start building the model, I began by using gender alongside the
+aforementioned time dummies. The only controls included were to control
+for temporal effects – this lengthy string of dummy variables is omitted
+completely from the final output. The further back the year was, the
+larger the deviation from the reference period of the June 2024 LFS was,
+that is to say the coefficient was a larger negative modifier. Every
+single dummy variable’s coefficient was significant at p &lt; 0.001,
+except for January 2024, which wasn’t (until more variables were added)
+significant to any meaningful level – this aligns with intuition. This
+is model 1, “Gender Only.”</p>
+<p>Layering on, adding province of residence should help control for
+certain factors such as cost of living – as this is the PUMF, geographic
+identifiers are limited to provinces and the 9 largest Census
+Metropolitan Areas (CMAs), so I didn’t include a rural/suburban/urban
+variable. This is model 2, “Add Provinces.” For ease of viewing, I only
+display the dummies for Quebec, Alberta, and British Columbia.</p>
+<p>I then account for the impact of education, layering on another set
+of dummy variables. Similarly, for ease of viewing, I only include the
+coefficients for 0-8 years of education, graduating with a bachelor’s
+degree, and graduating with more than a bachelor’s degree. This is model
+3, “Add Education.”</p>
+<p>Next, I decided to use a two term model for age’s impact on earnings.
+As I wasn’t completely sure how to choose the “best” number of terms, I
+used the Akaike Information Criteria (AIC) score to see where adding
+more terms stopped meaningfully improving prediction error. While the
+AIC score was minimized at seven terms, by far and away the largest
+improvement was from adding that second term – for ease I just stopped
+at two. This makes model 4, “Add Age.”</p>
+<p>I then add in industry (based on NAICS code), whether the worker is
+covered by a union contract, if the worker is a recent/established
+immigrant (distinguishing between the two). This is model 5, the “Full
+Model.” For ease of viewing, I omit most industries, opting to show
+mining &amp; oil extraction, finance &amp; insurance, and healthcare
+&amp; social assistance.</p>
+<p>To see those variables which have been omitted from the table on
+display, including time (denoted as years from start of sample period in
+the coefficient naming scheme), click the button below to view the full
+table.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co"># Store the models for comparison</span></span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>models <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
@@ -3133,8 +3176,8 @@ is an immigrant, and works in the Agriculture sector.</p>
 
     <script>
 
-      function styleCell_tjpx04y2edy3v4uuv6r8(i, j, css_id) {
-          var table = document.getElementById("tinytable_tjpx04y2edy3v4uuv6r8");
+      function styleCell_1rrpzmze547lohwj7jg3(i, j, css_id) {
+          var table = document.getElementById("tinytable_1rrpzmze547lohwj7jg3");
           var cell = table.rows[i]?.cells[j];  // Safe navigation to avoid errors
           if (cell) {
               console.log(`Styling cell at (${i}, ${j}) with class ${css_id}`);
@@ -3144,7 +3187,7 @@ is an immigrant, and works in the Agriculture sector.</p>
           }
       }
       function insertSpanRow(i, colspan, content) {
-        var table = document.getElementById('tinytable_tjpx04y2edy3v4uuv6r8');
+        var table = document.getElementById('tinytable_1rrpzmze547lohwj7jg3');
         var newRow = table.insertRow(i);
         var newCell = newRow.insertCell(0);
         newCell.setAttribute("colspan", colspan);
@@ -3152,8 +3195,8 @@ is an immigrant, and works in the Agriculture sector.</p>
         // this may be unsafe, but innerText does not interpret <br>
         newCell.innerHTML = content;
       }
-      function spanCell_tjpx04y2edy3v4uuv6r8(i, j, rowspan, colspan) {
-        var table = document.getElementById("tinytable_tjpx04y2edy3v4uuv6r8");
+      function spanCell_1rrpzmze547lohwj7jg3(i, j, rowspan, colspan) {
+        var table = document.getElementById("tinytable_1rrpzmze547lohwj7jg3");
         const targetRow = table.rows[i];
         const targetCell = targetRow.cells[j];
         for (let r = 0; r < rowspan; r++) {
@@ -3183,20 +3226,20 @@ is an immigrant, and works in the Agriculture sector.</p>
       window.addEventListener('load', function () {
           var cellsToStyle = [
             // tinytable style arrays after
-          { positions: [ { i: 35, j: 4 }, { i: 35, j: 3 }, { i: 35, j: 1 }, { i: 35, j: 2 }, { i: 35, j: 5 },  ], css_id: 'tinytable_css_s175ou1b2qshhr0tlxpl',}, 
-          { positions: [ { i: 32, j: 4 }, { i: 32, j: 3 }, { i: 32, j: 5 }, { i: 32, j: 2 }, { i: 32, j: 1 },  ], css_id: 'tinytable_css_8oamqmbfubgvxxh0s15l',}, 
-          { positions: [ { i: 1, j: 1 }, { i: 4, j: 1 }, { i: 5, j: 1 }, { i: 3, j: 1 }, { i: 8, j: 1 }, { i: 9, j: 1 }, { i: 7, j: 1 }, { i: 12, j: 1 }, { i: 13, j: 1 }, { i: 14, j: 1 }, { i: 2, j: 1 }, { i: 16, j: 1 }, { i: 17, j: 1 }, { i: 18, j: 1 }, { i: 6, j: 1 }, { i: 20, j: 1 }, { i: 21, j: 1 }, { i: 22, j: 1 }, { i: 10, j: 1 }, { i: 11, j: 1 }, { i: 25, j: 1 }, { i: 26, j: 1 }, { i: 27, j: 1 }, { i: 15, j: 1 }, { i: 29, j: 1 }, { i: 30, j: 1 }, { i: 31, j: 1 }, { i: 19, j: 1 }, { i: 33, j: 1 }, { i: 34, j: 1 }, { i: 3, j: 3 }, { i: 23, j: 1 }, { i: 1, j: 2 }, { i: 2, j: 2 }, { i: 3, j: 2 }, { i: 4, j: 2 }, { i: 5, j: 2 }, { i: 6, j: 2 }, { i: 7, j: 2 }, { i: 8, j: 2 }, { i: 9, j: 2 }, { i: 10, j: 2 }, { i: 11, j: 2 }, { i: 12, j: 2 }, { i: 13, j: 2 }, { i: 14, j: 2 }, { i: 15, j: 2 }, { i: 16, j: 2 }, { i: 17, j: 2 }, { i: 18, j: 2 }, { i: 19, j: 2 }, { i: 20, j: 2 }, { i: 21, j: 2 }, { i: 22, j: 2 }, { i: 23, j: 2 }, { i: 24, j: 2 }, { i: 25, j: 2 }, { i: 26, j: 2 }, { i: 27, j: 2 }, { i: 24, j: 1 }, { i: 29, j: 2 }, { i: 30, j: 2 }, { i: 31, j: 2 }, { i: 28, j: 1 }, { i: 33, j: 2 }, { i: 34, j: 2 }, { i: 3, j: 4 }, { i: 4, j: 4 }, { i: 1, j: 3 }, { i: 2, j: 3 }, { i: 7, j: 4 }, { i: 4, j: 3 }, { i: 5, j: 3 }, { i: 6, j: 3 }, { i: 7, j: 3 }, { i: 8, j: 3 }, { i: 9, j: 3 }, { i: 10, j: 3 }, { i: 11, j: 3 }, { i: 12, j: 3 }, { i: 13, j: 3 }, { i: 14, j: 3 }, { i: 15, j: 3 }, { i: 16, j: 3 }, { i: 17, j: 3 }, { i: 18, j: 3 }, { i: 19, j: 3 }, { i: 20, j: 3 }, { i: 21, j: 3 }, { i: 22, j: 3 }, { i: 23, j: 3 }, { i: 24, j: 3 }, { i: 25, j: 3 }, { i: 26, j: 3 }, { i: 27, j: 3 }, { i: 28, j: 3 }, { i: 29, j: 3 }, { i: 30, j: 3 }, { i: 31, j: 3 }, { i: 28, j: 2 }, { i: 33, j: 3 }, { i: 34, j: 3 }, { i: 3, j: 5 }, { i: 4, j: 5 }, { i: 1, j: 4 }, { i: 2, j: 4 }, { i: 7, j: 5 }, { i: 8, j: 5 }, { i: 5, j: 4 }, { i: 6, j: 4 }, { i: 11, j: 5 }, { i: 8, j: 4 }, { i: 9, j: 4 }, { i: 10, j: 4 }, { i: 11, j: 4 }, { i: 12, j: 4 }, { i: 13, j: 4 }, { i: 14, j: 4 }, { i: 15, j: 4 }, { i: 16, j: 4 }, { i: 17, j: 4 }, { i: 18, j: 4 }, { i: 19, j: 4 }, { i: 20, j: 4 }, { i: 21, j: 4 }, { i: 22, j: 4 }, { i: 23, j: 4 }, { i: 24, j: 4 }, { i: 25, j: 4 }, { i: 26, j: 4 }, { i: 27, j: 4 }, { i: 28, j: 4 }, { i: 29, j: 4 }, { i: 30, j: 4 }, { i: 31, j: 4 }, { i: 9, j: 5 }, { i: 33, j: 4 }, { i: 34, j: 4 }, { i: 12, j: 5 }, { i: 13, j: 5 }, { i: 1, j: 5 }, { i: 2, j: 5 }, { i: 16, j: 5 }, { i: 17, j: 5 }, { i: 5, j: 5 }, { i: 6, j: 5 }, { i: 20, j: 5 }, { i: 21, j: 5 }, { i: 22, j: 5 }, { i: 10, j: 5 }, { i: 24, j: 5 }, { i: 25, j: 5 }, { i: 26, j: 5 }, { i: 14, j: 5 }, { i: 15, j: 5 }, { i: 29, j: 5 }, { i: 30, j: 5 }, { i: 18, j: 5 }, { i: 19, j: 5 }, { i: 33, j: 5 }, { i: 34, j: 5 }, { i: 23, j: 5 }, { i: 28, j: 5 }, { i: 27, j: 5 }, { i: 31, j: 5 },  ], css_id: 'tinytable_css_aean2c97odeqe32y8wgs',}, 
-          { positions: [ { i: 0, j: 1 }, { i: 0, j: 4 }, { i: 0, j: 5 }, { i: 0, j: 3 }, { i: 0, j: 2 },  ], css_id: 'tinytable_css_v63soa4wqr1ahtq018nr',}, 
-          { positions: [ { i: 35, j: 0 },  ], css_id: 'tinytable_css_bzqky9qyofsko5pmg8fz',}, 
-          { positions: [ { i: 32, j: 0 },  ], css_id: 'tinytable_css_r2hgqenrx0ju9a7a7mwz',}, 
-          { positions: [ { i: 1, j: 0 }, { i: 2, j: 0 }, { i: 3, j: 0 }, { i: 4, j: 0 }, { i: 5, j: 0 }, { i: 6, j: 0 }, { i: 7, j: 0 }, { i: 8, j: 0 }, { i: 9, j: 0 }, { i: 10, j: 0 }, { i: 11, j: 0 }, { i: 12, j: 0 }, { i: 13, j: 0 }, { i: 14, j: 0 }, { i: 15, j: 0 }, { i: 16, j: 0 }, { i: 17, j: 0 }, { i: 18, j: 0 }, { i: 19, j: 0 }, { i: 20, j: 0 }, { i: 21, j: 0 }, { i: 22, j: 0 }, { i: 23, j: 0 }, { i: 24, j: 0 }, { i: 25, j: 0 }, { i: 26, j: 0 }, { i: 27, j: 0 }, { i: 28, j: 0 }, { i: 29, j: 0 }, { i: 30, j: 0 }, { i: 31, j: 0 }, { i: 33, j: 0 }, { i: 34, j: 0 },  ], css_id: 'tinytable_css_zwx0jqjewdiulvlr6szv',}, 
-          { positions: [ { i: 0, j: 0 },  ], css_id: 'tinytable_css_y1ffnjsub8buc0rv1ray',}, 
+          { positions: [ { i: 35, j: 4 }, { i: 35, j: 3 }, { i: 35, j: 1 }, { i: 35, j: 2 }, { i: 35, j: 5 },  ], css_id: 'tinytable_css_xx6fpi552k8t9ep4lktv',}, 
+          { positions: [ { i: 32, j: 4 }, { i: 32, j: 3 }, { i: 32, j: 5 }, { i: 32, j: 2 }, { i: 32, j: 1 },  ], css_id: 'tinytable_css_v908z7ypj9jpyvupkl2g',}, 
+          { positions: [ { i: 1, j: 1 }, { i: 4, j: 1 }, { i: 5, j: 1 }, { i: 3, j: 1 }, { i: 8, j: 1 }, { i: 9, j: 1 }, { i: 7, j: 1 }, { i: 12, j: 1 }, { i: 13, j: 1 }, { i: 14, j: 1 }, { i: 2, j: 1 }, { i: 16, j: 1 }, { i: 17, j: 1 }, { i: 18, j: 1 }, { i: 6, j: 1 }, { i: 20, j: 1 }, { i: 21, j: 1 }, { i: 22, j: 1 }, { i: 10, j: 1 }, { i: 11, j: 1 }, { i: 25, j: 1 }, { i: 26, j: 1 }, { i: 27, j: 1 }, { i: 15, j: 1 }, { i: 29, j: 1 }, { i: 30, j: 1 }, { i: 31, j: 1 }, { i: 19, j: 1 }, { i: 33, j: 1 }, { i: 34, j: 1 }, { i: 3, j: 3 }, { i: 23, j: 1 }, { i: 1, j: 2 }, { i: 2, j: 2 }, { i: 3, j: 2 }, { i: 4, j: 2 }, { i: 5, j: 2 }, { i: 6, j: 2 }, { i: 7, j: 2 }, { i: 8, j: 2 }, { i: 9, j: 2 }, { i: 10, j: 2 }, { i: 11, j: 2 }, { i: 12, j: 2 }, { i: 13, j: 2 }, { i: 14, j: 2 }, { i: 15, j: 2 }, { i: 16, j: 2 }, { i: 17, j: 2 }, { i: 18, j: 2 }, { i: 19, j: 2 }, { i: 20, j: 2 }, { i: 21, j: 2 }, { i: 22, j: 2 }, { i: 23, j: 2 }, { i: 24, j: 2 }, { i: 25, j: 2 }, { i: 26, j: 2 }, { i: 27, j: 2 }, { i: 24, j: 1 }, { i: 29, j: 2 }, { i: 30, j: 2 }, { i: 31, j: 2 }, { i: 28, j: 1 }, { i: 33, j: 2 }, { i: 34, j: 2 }, { i: 3, j: 4 }, { i: 4, j: 4 }, { i: 1, j: 3 }, { i: 2, j: 3 }, { i: 7, j: 4 }, { i: 4, j: 3 }, { i: 5, j: 3 }, { i: 6, j: 3 }, { i: 7, j: 3 }, { i: 8, j: 3 }, { i: 9, j: 3 }, { i: 10, j: 3 }, { i: 11, j: 3 }, { i: 12, j: 3 }, { i: 13, j: 3 }, { i: 14, j: 3 }, { i: 15, j: 3 }, { i: 16, j: 3 }, { i: 17, j: 3 }, { i: 18, j: 3 }, { i: 19, j: 3 }, { i: 20, j: 3 }, { i: 21, j: 3 }, { i: 22, j: 3 }, { i: 23, j: 3 }, { i: 24, j: 3 }, { i: 25, j: 3 }, { i: 26, j: 3 }, { i: 27, j: 3 }, { i: 28, j: 3 }, { i: 29, j: 3 }, { i: 30, j: 3 }, { i: 31, j: 3 }, { i: 28, j: 2 }, { i: 33, j: 3 }, { i: 34, j: 3 }, { i: 3, j: 5 }, { i: 4, j: 5 }, { i: 1, j: 4 }, { i: 2, j: 4 }, { i: 7, j: 5 }, { i: 8, j: 5 }, { i: 5, j: 4 }, { i: 6, j: 4 }, { i: 11, j: 5 }, { i: 8, j: 4 }, { i: 9, j: 4 }, { i: 10, j: 4 }, { i: 11, j: 4 }, { i: 12, j: 4 }, { i: 13, j: 4 }, { i: 14, j: 4 }, { i: 15, j: 4 }, { i: 16, j: 4 }, { i: 17, j: 4 }, { i: 18, j: 4 }, { i: 19, j: 4 }, { i: 20, j: 4 }, { i: 21, j: 4 }, { i: 22, j: 4 }, { i: 23, j: 4 }, { i: 24, j: 4 }, { i: 25, j: 4 }, { i: 26, j: 4 }, { i: 27, j: 4 }, { i: 28, j: 4 }, { i: 29, j: 4 }, { i: 30, j: 4 }, { i: 31, j: 4 }, { i: 9, j: 5 }, { i: 33, j: 4 }, { i: 34, j: 4 }, { i: 12, j: 5 }, { i: 13, j: 5 }, { i: 1, j: 5 }, { i: 2, j: 5 }, { i: 16, j: 5 }, { i: 17, j: 5 }, { i: 5, j: 5 }, { i: 6, j: 5 }, { i: 20, j: 5 }, { i: 21, j: 5 }, { i: 22, j: 5 }, { i: 10, j: 5 }, { i: 24, j: 5 }, { i: 25, j: 5 }, { i: 26, j: 5 }, { i: 14, j: 5 }, { i: 15, j: 5 }, { i: 29, j: 5 }, { i: 30, j: 5 }, { i: 18, j: 5 }, { i: 19, j: 5 }, { i: 33, j: 5 }, { i: 34, j: 5 }, { i: 23, j: 5 }, { i: 28, j: 5 }, { i: 27, j: 5 }, { i: 31, j: 5 },  ], css_id: 'tinytable_css_cmlk1zayhv1hntcin62x',}, 
+          { positions: [ { i: 0, j: 1 }, { i: 0, j: 4 }, { i: 0, j: 5 }, { i: 0, j: 3 }, { i: 0, j: 2 },  ], css_id: 'tinytable_css_29wj6ncr3r8g0mozich5',}, 
+          { positions: [ { i: 35, j: 0 },  ], css_id: 'tinytable_css_k6n54tqmpsrg73pfo9ff',}, 
+          { positions: [ { i: 32, j: 0 },  ], css_id: 'tinytable_css_32z1ky84zedqfxrlvu52',}, 
+          { positions: [ { i: 1, j: 0 }, { i: 2, j: 0 }, { i: 3, j: 0 }, { i: 4, j: 0 }, { i: 5, j: 0 }, { i: 6, j: 0 }, { i: 7, j: 0 }, { i: 8, j: 0 }, { i: 9, j: 0 }, { i: 10, j: 0 }, { i: 11, j: 0 }, { i: 12, j: 0 }, { i: 13, j: 0 }, { i: 14, j: 0 }, { i: 15, j: 0 }, { i: 16, j: 0 }, { i: 17, j: 0 }, { i: 18, j: 0 }, { i: 19, j: 0 }, { i: 20, j: 0 }, { i: 21, j: 0 }, { i: 22, j: 0 }, { i: 23, j: 0 }, { i: 24, j: 0 }, { i: 25, j: 0 }, { i: 26, j: 0 }, { i: 27, j: 0 }, { i: 28, j: 0 }, { i: 29, j: 0 }, { i: 30, j: 0 }, { i: 31, j: 0 }, { i: 33, j: 0 }, { i: 34, j: 0 },  ], css_id: 'tinytable_css_xclujrqfi1f6kv107wei',}, 
+          { positions: [ { i: 0, j: 0 },  ], css_id: 'tinytable_css_qc9phqouogpgascpi2e8',}, 
           ];
 
           // Loop over the arrays to style the cells
           cellsToStyle.forEach(function (group) {
               group.positions.forEach(function (cell) {
-                  styleCell_tjpx04y2edy3v4uuv6r8(cell.i, cell.j, group.css_id);
+                  styleCell_1rrpzmze547lohwj7jg3(cell.i, cell.j, group.css_id);
               });
           });
       });
@@ -3204,17 +3247,17 @@ is an immigrant, and works in the Agriculture sector.</p>
 
     <style>
 
-.table td.tinytable_css_s175ou1b2qshhr0tlxpl, .table th.tinytable_css_s175ou1b2qshhr0tlxpl { text-align: center; border-bottom: solid #d3d8dc 0.1em; }
-.table td.tinytable_css_8oamqmbfubgvxxh0s15l, .table th.tinytable_css_8oamqmbfubgvxxh0s15l { text-align: center; border-bottom: solid black 0.05em; }
-.table td.tinytable_css_aean2c97odeqe32y8wgs, .table th.tinytable_css_aean2c97odeqe32y8wgs { text-align: center; }
-.table td.tinytable_css_v63soa4wqr1ahtq018nr, .table th.tinytable_css_v63soa4wqr1ahtq018nr { text-align: center; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
-.table td.tinytable_css_bzqky9qyofsko5pmg8fz, .table th.tinytable_css_bzqky9qyofsko5pmg8fz { text-align: left; border-bottom: solid #d3d8dc 0.1em; }
-.table td.tinytable_css_r2hgqenrx0ju9a7a7mwz, .table th.tinytable_css_r2hgqenrx0ju9a7a7mwz { text-align: left; border-bottom: solid black 0.05em; }
-.table td.tinytable_css_zwx0jqjewdiulvlr6szv, .table th.tinytable_css_zwx0jqjewdiulvlr6szv { text-align: left; }
-.table td.tinytable_css_y1ffnjsub8buc0rv1ray, .table th.tinytable_css_y1ffnjsub8buc0rv1ray { text-align: left; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
+.table td.tinytable_css_xx6fpi552k8t9ep4lktv, .table th.tinytable_css_xx6fpi552k8t9ep4lktv { text-align: center; border-bottom: solid #d3d8dc 0.1em; }
+.table td.tinytable_css_v908z7ypj9jpyvupkl2g, .table th.tinytable_css_v908z7ypj9jpyvupkl2g { text-align: center; border-bottom: solid black 0.05em; }
+.table td.tinytable_css_cmlk1zayhv1hntcin62x, .table th.tinytable_css_cmlk1zayhv1hntcin62x { text-align: center; }
+.table td.tinytable_css_29wj6ncr3r8g0mozich5, .table th.tinytable_css_29wj6ncr3r8g0mozich5 { text-align: center; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
+.table td.tinytable_css_k6n54tqmpsrg73pfo9ff, .table th.tinytable_css_k6n54tqmpsrg73pfo9ff { text-align: left; border-bottom: solid #d3d8dc 0.1em; }
+.table td.tinytable_css_32z1ky84zedqfxrlvu52, .table th.tinytable_css_32z1ky84zedqfxrlvu52 { text-align: left; border-bottom: solid black 0.05em; }
+.table td.tinytable_css_xclujrqfi1f6kv107wei, .table th.tinytable_css_xclujrqfi1f6kv107wei { text-align: left; }
+.table td.tinytable_css_qc9phqouogpgascpi2e8, .table th.tinytable_css_qc9phqouogpgascpi2e8 { text-align: left; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
 </style>
     <div class="container">
-      <table class="table table-borderless" id="tinytable_tjpx04y2edy3v4uuv6r8" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+      <table class="table table-borderless" id="tinytable_1rrpzmze547lohwj7jg3" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
         <thead>
         <caption>Log Wage Regressions with Different Specifications</caption>
               <tr>
@@ -3521,8 +3564,8 @@ Click to show/hide the full comparison table of all models
 
     <script>
 
-      function styleCell_3c3fbbw3u6hjz9kfrsum(i, j, css_id) {
-          var table = document.getElementById("tinytable_3c3fbbw3u6hjz9kfrsum");
+      function styleCell_40th04gej2cp46htrmdz(i, j, css_id) {
+          var table = document.getElementById("tinytable_40th04gej2cp46htrmdz");
           var cell = table.rows[i]?.cells[j];  // Safe navigation to avoid errors
           if (cell) {
               console.log(`Styling cell at (${i}, ${j}) with class ${css_id}`);
@@ -3532,7 +3575,7 @@ Click to show/hide the full comparison table of all models
           }
       }
       function insertSpanRow(i, colspan, content) {
-        var table = document.getElementById('tinytable_3c3fbbw3u6hjz9kfrsum');
+        var table = document.getElementById('tinytable_40th04gej2cp46htrmdz');
         var newRow = table.insertRow(i);
         var newCell = newRow.insertCell(0);
         newCell.setAttribute("colspan", colspan);
@@ -3540,8 +3583,8 @@ Click to show/hide the full comparison table of all models
         // this may be unsafe, but innerText does not interpret <br>
         newCell.innerHTML = content;
       }
-      function spanCell_3c3fbbw3u6hjz9kfrsum(i, j, rowspan, colspan) {
-        var table = document.getElementById("tinytable_3c3fbbw3u6hjz9kfrsum");
+      function spanCell_40th04gej2cp46htrmdz(i, j, rowspan, colspan) {
+        var table = document.getElementById("tinytable_40th04gej2cp46htrmdz");
         const targetRow = table.rows[i];
         const targetCell = targetRow.cells[j];
         for (let r = 0; r < rowspan; r++) {
@@ -3571,20 +3614,20 @@ Click to show/hide the full comparison table of all models
       window.addEventListener('load', function () {
           var cellsToStyle = [
             // tinytable style arrays after
-          { positions: [ { i: 161, j: 3 }, { i: 161, j: 1 }, { i: 161, j: 2 }, { i: 161, j: 4 }, { i: 161, j: 5 },  ], css_id: 'tinytable_css_n2ffb3oyhxvpeqn3b8i8',}, 
-          { positions: [ { i: 158, j: 5 }, { i: 158, j: 4 }, { i: 158, j: 3 }, { i: 158, j: 1 }, { i: 158, j: 2 },  ], css_id: 'tinytable_css_zn7gxzw2ko47sqxhdzej',}, 
-          { positions: [ { i: 5, j: 1 }, { i: 6, j: 1 }, { i: 7, j: 1 }, { i: 4, j: 1 }, { i: 9, j: 1 }, { i: 10, j: 1 }, { i: 11, j: 1 }, { i: 8, j: 1 }, { i: 13, j: 1 }, { i: 14, j: 1 }, { i: 15, j: 1 }, { i: 12, j: 1 }, { i: 17, j: 1 }, { i: 18, j: 1 }, { i: 19, j: 1 }, { i: 20, j: 1 }, { i: 21, j: 1 }, { i: 22, j: 1 }, { i: 23, j: 1 }, { i: 24, j: 1 }, { i: 25, j: 1 }, { i: 26, j: 1 }, { i: 27, j: 1 }, { i: 28, j: 1 }, { i: 16, j: 1 }, { i: 30, j: 1 }, { i: 31, j: 1 }, { i: 32, j: 1 }, { i: 33, j: 1 }, { i: 34, j: 1 }, { i: 35, j: 1 }, { i: 36, j: 1 }, { i: 37, j: 1 }, { i: 38, j: 1 }, { i: 39, j: 1 }, { i: 40, j: 1 }, { i: 1, j: 1 }, { i: 29, j: 1 }, { i: 3, j: 1 }, { i: 44, j: 1 }, { i: 45, j: 1 }, { i: 46, j: 1 }, { i: 47, j: 1 }, { i: 48, j: 1 }, { i: 49, j: 1 }, { i: 50, j: 1 }, { i: 51, j: 1 }, { i: 52, j: 1 }, { i: 53, j: 1 }, { i: 54, j: 1 }, { i: 55, j: 1 }, { i: 56, j: 1 }, { i: 57, j: 1 }, { i: 58, j: 1 }, { i: 59, j: 1 }, { i: 60, j: 1 }, { i: 61, j: 1 }, { i: 62, j: 1 }, { i: 63, j: 1 }, { i: 64, j: 1 }, { i: 65, j: 1 }, { i: 66, j: 1 }, { i: 67, j: 1 }, { i: 68, j: 1 }, { i: 69, j: 1 }, { i: 70, j: 1 }, { i: 71, j: 1 }, { i: 72, j: 1 }, { i: 73, j: 1 }, { i: 74, j: 1 }, { i: 75, j: 1 }, { i: 76, j: 1 }, { i: 77, j: 1 }, { i: 78, j: 1 }, { i: 79, j: 1 }, { i: 80, j: 1 }, { i: 81, j: 1 }, { i: 42, j: 1 }, { i: 83, j: 1 }, { i: 84, j: 1 }, { i: 85, j: 1 }, { i: 86, j: 1 }, { i: 87, j: 1 }, { i: 88, j: 1 }, { i: 89, j: 1 }, { i: 90, j: 1 }, { i: 91, j: 1 }, { i: 92, j: 1 }, { i: 93, j: 1 }, { i: 94, j: 1 }, { i: 95, j: 1 }, { i: 96, j: 1 }, { i: 97, j: 1 }, { i: 98, j: 1 }, { i: 99, j: 1 }, { i: 100, j: 1 }, { i: 101, j: 1 }, { i: 102, j: 1 }, { i: 103, j: 1 }, { i: 104, j: 1 }, { i: 105, j: 1 }, { i: 106, j: 1 }, { i: 107, j: 1 }, { i: 108, j: 1 }, { i: 109, j: 1 }, { i: 110, j: 1 }, { i: 111, j: 1 }, { i: 112, j: 1 }, { i: 113, j: 1 }, { i: 114, j: 1 }, { i: 115, j: 1 }, { i: 116, j: 1 }, { i: 117, j: 1 }, { i: 118, j: 1 }, { i: 119, j: 1 }, { i: 120, j: 1 }, { i: 121, j: 1 }, { i: 122, j: 1 }, { i: 2, j: 1 }, { i: 124, j: 1 }, { i: 125, j: 1 }, { i: 126, j: 1 }, { i: 127, j: 1 }, { i: 128, j: 1 }, { i: 129, j: 1 }, { i: 130, j: 1 }, { i: 131, j: 1 }, { i: 132, j: 1 }, { i: 133, j: 1 }, { i: 134, j: 1 }, { i: 135, j: 1 }, { i: 136, j: 1 }, { i: 137, j: 1 }, { i: 138, j: 1 }, { i: 139, j: 1 }, { i: 140, j: 1 }, { i: 141, j: 1 }, { i: 142, j: 1 }, { i: 143, j: 1 }, { i: 144, j: 1 }, { i: 145, j: 1 }, { i: 146, j: 1 }, { i: 147, j: 1 }, { i: 148, j: 1 }, { i: 149, j: 1 }, { i: 150, j: 1 }, { i: 151, j: 1 }, { i: 152, j: 1 }, { i: 153, j: 1 }, { i: 154, j: 1 }, { i: 155, j: 1 }, { i: 156, j: 1 }, { i: 157, j: 1 }, { i: 117, j: 2 }, { i: 159, j: 1 }, { i: 160, j: 1 }, { i: 120, j: 2 }, { i: 41, j: 1 }, { i: 1, j: 2 }, { i: 43, j: 1 }, { i: 3, j: 2 }, { i: 4, j: 2 }, { i: 5, j: 2 }, { i: 6, j: 2 }, { i: 7, j: 2 }, { i: 8, j: 2 }, { i: 9, j: 2 }, { i: 10, j: 2 }, { i: 11, j: 2 }, { i: 12, j: 2 }, { i: 13, j: 2 }, { i: 14, j: 2 }, { i: 15, j: 2 }, { i: 16, j: 2 }, { i: 17, j: 2 }, { i: 18, j: 2 }, { i: 19, j: 2 }, { i: 20, j: 2 }, { i: 21, j: 2 }, { i: 22, j: 2 }, { i: 23, j: 2 }, { i: 24, j: 2 }, { i: 25, j: 2 }, { i: 26, j: 2 }, { i: 27, j: 2 }, { i: 28, j: 2 }, { i: 29, j: 2 }, { i: 30, j: 2 }, { i: 31, j: 2 }, { i: 32, j: 2 }, { i: 33, j: 2 }, { i: 34, j: 2 }, { i: 35, j: 2 }, { i: 36, j: 2 }, { i: 37, j: 2 }, { i: 38, j: 2 }, { i: 39, j: 2 }, { i: 40, j: 2 }, { i: 82, j: 1 }, { i: 42, j: 2 }, { i: 43, j: 2 }, { i: 44, j: 2 }, { i: 45, j: 2 }, { i: 46, j: 2 }, { i: 47, j: 2 }, { i: 48, j: 2 }, { i: 49, j: 2 }, { i: 50, j: 2 }, { i: 51, j: 2 }, { i: 52, j: 2 }, { i: 53, j: 2 }, { i: 54, j: 2 }, { i: 55, j: 2 }, { i: 56, j: 2 }, { i: 57, j: 2 }, { i: 58, j: 2 }, { i: 59, j: 2 }, { i: 60, j: 2 }, { i: 61, j: 2 }, { i: 62, j: 2 }, { i: 63, j: 2 }, { i: 64, j: 2 }, { i: 65, j: 2 }, { i: 66, j: 2 }, { i: 67, j: 2 }, { i: 68, j: 2 }, { i: 69, j: 2 }, { i: 70, j: 2 }, { i: 71, j: 2 }, { i: 72, j: 2 }, { i: 73, j: 2 }, { i: 74, j: 2 }, { i: 75, j: 2 }, { i: 76, j: 2 }, { i: 77, j: 2 }, { i: 78, j: 2 }, { i: 79, j: 2 }, { i: 80, j: 2 }, { i: 81, j: 2 }, { i: 123, j: 1 }, { i: 83, j: 2 }, { i: 84, j: 2 }, { i: 85, j: 2 }, { i: 86, j: 2 }, { i: 87, j: 2 }, { i: 88, j: 2 }, { i: 89, j: 2 }, { i: 90, j: 2 }, { i: 91, j: 2 }, { i: 92, j: 2 }, { i: 93, j: 2 }, { i: 94, j: 2 }, { i: 95, j: 2 }, { i: 96, j: 2 }, { i: 97, j: 2 }, { i: 98, j: 2 }, { i: 99, j: 2 }, { i: 100, j: 2 }, { i: 101, j: 2 }, { i: 102, j: 2 }, { i: 103, j: 2 }, { i: 104, j: 2 }, { i: 105, j: 2 }, { i: 106, j: 2 }, { i: 107, j: 2 }, { i: 108, j: 2 }, { i: 109, j: 2 }, { i: 110, j: 2 }, { i: 111, j: 2 }, { i: 112, j: 2 }, { i: 113, j: 2 }, { i: 114, j: 2 }, { i: 115, j: 2 }, { i: 116, j: 2 }, { i: 76, j: 3 }, { i: 118, j: 2 }, { i: 119, j: 2 }, { i: 79, j: 3 }, { i: 121, j: 2 }, { i: 122, j: 2 }, { i: 2, j: 2 }, { i: 124, j: 2 }, { i: 125, j: 2 }, { i: 126, j: 2 }, { i: 127, j: 2 }, { i: 128, j: 2 }, { i: 129, j: 2 }, { i: 130, j: 2 }, { i: 131, j: 2 }, { i: 132, j: 2 }, { i: 133, j: 2 }, { i: 134, j: 2 }, { i: 135, j: 2 }, { i: 136, j: 2 }, { i: 137, j: 2 }, { i: 138, j: 2 }, { i: 139, j: 2 }, { i: 140, j: 2 }, { i: 141, j: 2 }, { i: 142, j: 2 }, { i: 143, j: 2 }, { i: 144, j: 2 }, { i: 145, j: 2 }, { i: 146, j: 2 }, { i: 147, j: 2 }, { i: 148, j: 2 }, { i: 149, j: 2 }, { i: 150, j: 2 }, { i: 151, j: 2 }, { i: 152, j: 2 }, { i: 153, j: 2 }, { i: 154, j: 2 }, { i: 155, j: 2 }, { i: 156, j: 2 }, { i: 157, j: 2 }, { i: 117, j: 3 }, { i: 159, j: 2 }, { i: 160, j: 2 }, { i: 120, j: 3 }, { i: 41, j: 2 }, { i: 1, j: 3 }, { i: 2, j: 3 }, { i: 3, j: 3 }, { i: 4, j: 3 }, { i: 5, j: 3 }, { i: 6, j: 3 }, { i: 7, j: 3 }, { i: 8, j: 3 }, { i: 9, j: 3 }, { i: 10, j: 3 }, { i: 11, j: 3 }, { i: 12, j: 3 }, { i: 13, j: 3 }, { i: 14, j: 3 }, { i: 15, j: 3 }, { i: 16, j: 3 }, { i: 17, j: 3 }, { i: 18, j: 3 }, { i: 19, j: 3 }, { i: 20, j: 3 }, { i: 21, j: 3 }, { i: 22, j: 3 }, { i: 23, j: 3 }, { i: 24, j: 3 }, { i: 25, j: 3 }, { i: 26, j: 3 }, { i: 27, j: 3 }, { i: 28, j: 3 }, { i: 29, j: 3 }, { i: 30, j: 3 }, { i: 31, j: 3 }, { i: 32, j: 3 }, { i: 33, j: 3 }, { i: 34, j: 3 }, { i: 35, j: 3 }, { i: 36, j: 3 }, { i: 37, j: 3 }, { i: 38, j: 3 }, { i: 39, j: 3 }, { i: 40, j: 3 }, { i: 82, j: 2 }, { i: 42, j: 3 }, { i: 43, j: 3 }, { i: 44, j: 3 }, { i: 45, j: 3 }, { i: 46, j: 3 }, { i: 47, j: 3 }, { i: 48, j: 3 }, { i: 49, j: 3 }, { i: 50, j: 3 }, { i: 51, j: 3 }, { i: 52, j: 3 }, { i: 53, j: 3 }, { i: 54, j: 3 }, { i: 55, j: 3 }, { i: 56, j: 3 }, { i: 57, j: 3 }, { i: 58, j: 3 }, { i: 59, j: 3 }, { i: 60, j: 3 }, { i: 61, j: 3 }, { i: 62, j: 3 }, { i: 63, j: 3 }, { i: 64, j: 3 }, { i: 65, j: 3 }, { i: 66, j: 3 }, { i: 67, j: 3 }, { i: 68, j: 3 }, { i: 69, j: 3 }, { i: 70, j: 3 }, { i: 71, j: 3 }, { i: 72, j: 3 }, { i: 73, j: 3 }, { i: 74, j: 3 }, { i: 75, j: 3 }, { i: 35, j: 4 }, { i: 77, j: 3 }, { i: 78, j: 3 }, { i: 38, j: 4 }, { i: 80, j: 3 }, { i: 81, j: 3 }, { i: 123, j: 2 }, { i: 83, j: 3 }, { i: 84, j: 3 }, { i: 85, j: 3 }, { i: 86, j: 3 }, { i: 87, j: 3 }, { i: 88, j: 3 }, { i: 89, j: 3 }, { i: 90, j: 3 }, { i: 91, j: 3 }, { i: 92, j: 3 }, { i: 93, j: 3 }, { i: 94, j: 3 }, { i: 95, j: 3 }, { i: 96, j: 3 }, { i: 97, j: 3 }, { i: 98, j: 3 }, { i: 99, j: 3 }, { i: 100, j: 3 }, { i: 101, j: 3 }, { i: 102, j: 3 }, { i: 103, j: 3 }, { i: 104, j: 3 }, { i: 105, j: 3 }, { i: 106, j: 3 }, { i: 107, j: 3 }, { i: 108, j: 3 }, { i: 109, j: 3 }, { i: 110, j: 3 }, { i: 111, j: 3 }, { i: 112, j: 3 }, { i: 113, j: 3 }, { i: 114, j: 3 }, { i: 115, j: 3 }, { i: 116, j: 3 }, { i: 76, j: 4 }, { i: 118, j: 3 }, { i: 119, j: 3 }, { i: 79, j: 4 }, { i: 121, j: 3 }, { i: 122, j: 3 }, { i: 123, j: 3 }, { i: 124, j: 3 }, { i: 125, j: 3 }, { i: 126, j: 3 }, { i: 127, j: 3 }, { i: 128, j: 3 }, { i: 129, j: 3 }, { i: 130, j: 3 }, { i: 131, j: 3 }, { i: 132, j: 3 }, { i: 133, j: 3 }, { i: 134, j: 3 }, { i: 135, j: 3 }, { i: 136, j: 3 }, { i: 137, j: 3 }, { i: 138, j: 3 }, { i: 139, j: 3 }, { i: 140, j: 3 }, { i: 141, j: 3 }, { i: 142, j: 3 }, { i: 143, j: 3 }, { i: 144, j: 3 }, { i: 145, j: 3 }, { i: 146, j: 3 }, { i: 147, j: 3 }, { i: 148, j: 3 }, { i: 149, j: 3 }, { i: 150, j: 3 }, { i: 151, j: 3 }, { i: 152, j: 3 }, { i: 153, j: 3 }, { i: 154, j: 3 }, { i: 155, j: 3 }, { i: 156, j: 3 }, { i: 157, j: 3 }, { i: 117, j: 4 }, { i: 159, j: 3 }, { i: 160, j: 3 }, { i: 120, j: 4 }, { i: 41, j: 3 }, { i: 1, j: 4 }, { i: 2, j: 4 }, { i: 3, j: 4 }, { i: 4, j: 4 }, { i: 5, j: 4 }, { i: 6, j: 4 }, { i: 7, j: 4 }, { i: 8, j: 4 }, { i: 9, j: 4 }, { i: 10, j: 4 }, { i: 11, j: 4 }, { i: 12, j: 4 }, { i: 13, j: 4 }, { i: 14, j: 4 }, { i: 15, j: 4 }, { i: 16, j: 4 }, { i: 17, j: 4 }, { i: 18, j: 4 }, { i: 19, j: 4 }, { i: 20, j: 4 }, { i: 21, j: 4 }, { i: 22, j: 4 }, { i: 23, j: 4 }, { i: 24, j: 4 }, { i: 25, j: 4 }, { i: 26, j: 4 }, { i: 27, j: 4 }, { i: 28, j: 4 }, { i: 29, j: 4 }, { i: 30, j: 4 }, { i: 31, j: 4 }, { i: 32, j: 4 }, { i: 33, j: 4 }, { i: 34, j: 4 }, { i: 156, j: 4 }, { i: 36, j: 4 }, { i: 37, j: 4 }, { i: 159, j: 4 }, { i: 39, j: 4 }, { i: 40, j: 4 }, { i: 82, j: 3 }, { i: 42, j: 4 }, { i: 43, j: 4 }, { i: 44, j: 4 }, { i: 45, j: 4 }, { i: 46, j: 4 }, { i: 47, j: 4 }, { i: 48, j: 4 }, { i: 49, j: 4 }, { i: 50, j: 4 }, { i: 51, j: 4 }, { i: 52, j: 4 }, { i: 53, j: 4 }, { i: 54, j: 4 }, { i: 55, j: 4 }, { i: 56, j: 4 }, { i: 57, j: 4 }, { i: 58, j: 4 }, { i: 59, j: 4 }, { i: 60, j: 4 }, { i: 61, j: 4 }, { i: 62, j: 4 }, { i: 63, j: 4 }, { i: 64, j: 4 }, { i: 65, j: 4 }, { i: 66, j: 4 }, { i: 67, j: 4 }, { i: 68, j: 4 }, { i: 69, j: 4 }, { i: 70, j: 4 }, { i: 71, j: 4 }, { i: 72, j: 4 }, { i: 73, j: 4 }, { i: 74, j: 4 }, { i: 75, j: 4 }, { i: 35, j: 5 }, { i: 77, j: 4 }, { i: 78, j: 4 }, { i: 38, j: 5 }, { i: 80, j: 4 }, { i: 81, j: 4 }, { i: 82, j: 4 }, { i: 83, j: 4 }, { i: 84, j: 4 }, { i: 85, j: 4 }, { i: 86, j: 4 }, { i: 87, j: 4 }, { i: 88, j: 4 }, { i: 89, j: 4 }, { i: 90, j: 4 }, { i: 91, j: 4 }, { i: 92, j: 4 }, { i: 93, j: 4 }, { i: 94, j: 4 }, { i: 95, j: 4 }, { i: 96, j: 4 }, { i: 97, j: 4 }, { i: 98, j: 4 }, { i: 99, j: 4 }, { i: 100, j: 4 }, { i: 101, j: 4 }, { i: 102, j: 4 }, { i: 103, j: 4 }, { i: 104, j: 4 }, { i: 105, j: 4 }, { i: 106, j: 4 }, { i: 107, j: 4 }, { i: 108, j: 4 }, { i: 109, j: 4 }, { i: 110, j: 4 }, { i: 111, j: 4 }, { i: 112, j: 4 }, { i: 113, j: 4 }, { i: 114, j: 4 }, { i: 115, j: 4 }, { i: 116, j: 4 }, { i: 76, j: 5 }, { i: 118, j: 4 }, { i: 119, j: 4 }, { i: 79, j: 5 }, { i: 121, j: 4 }, { i: 122, j: 4 }, { i: 123, j: 4 }, { i: 124, j: 4 }, { i: 125, j: 4 }, { i: 126, j: 4 }, { i: 127, j: 4 }, { i: 128, j: 4 }, { i: 129, j: 4 }, { i: 130, j: 4 }, { i: 131, j: 4 }, { i: 132, j: 4 }, { i: 133, j: 4 }, { i: 134, j: 4 }, { i: 135, j: 4 }, { i: 136, j: 4 }, { i: 137, j: 4 }, { i: 138, j: 4 }, { i: 139, j: 4 }, { i: 140, j: 4 }, { i: 141, j: 4 }, { i: 142, j: 4 }, { i: 143, j: 4 }, { i: 144, j: 4 }, { i: 145, j: 4 }, { i: 146, j: 4 }, { i: 147, j: 4 }, { i: 148, j: 4 }, { i: 149, j: 4 }, { i: 150, j: 4 }, { i: 151, j: 4 }, { i: 152, j: 4 }, { i: 153, j: 4 }, { i: 154, j: 4 }, { i: 155, j: 4 }, { i: 115, j: 5 }, { i: 157, j: 4 }, { i: 117, j: 5 }, { i: 118, j: 5 }, { i: 160, j: 4 }, { i: 120, j: 5 }, { i: 41, j: 4 }, { i: 1, j: 5 }, { i: 2, j: 5 }, { i: 3, j: 5 }, { i: 4, j: 5 }, { i: 5, j: 5 }, { i: 6, j: 5 }, { i: 7, j: 5 }, { i: 8, j: 5 }, { i: 9, j: 5 }, { i: 10, j: 5 }, { i: 11, j: 5 }, { i: 12, j: 5 }, { i: 13, j: 5 }, { i: 14, j: 5 }, { i: 15, j: 5 }, { i: 16, j: 5 }, { i: 17, j: 5 }, { i: 18, j: 5 }, { i: 19, j: 5 }, { i: 20, j: 5 }, { i: 21, j: 5 }, { i: 22, j: 5 }, { i: 23, j: 5 }, { i: 24, j: 5 }, { i: 25, j: 5 }, { i: 26, j: 5 }, { i: 27, j: 5 }, { i: 28, j: 5 }, { i: 29, j: 5 }, { i: 30, j: 5 }, { i: 31, j: 5 }, { i: 32, j: 5 }, { i: 33, j: 5 }, { i: 34, j: 5 }, { i: 156, j: 5 }, { i: 36, j: 5 }, { i: 37, j: 5 }, { i: 159, j: 5 }, { i: 39, j: 5 }, { i: 40, j: 5 }, { i: 41, j: 5 }, { i: 42, j: 5 }, { i: 43, j: 5 }, { i: 44, j: 5 }, { i: 45, j: 5 }, { i: 46, j: 5 }, { i: 47, j: 5 }, { i: 48, j: 5 }, { i: 49, j: 5 }, { i: 50, j: 5 }, { i: 51, j: 5 }, { i: 52, j: 5 }, { i: 53, j: 5 }, { i: 54, j: 5 }, { i: 55, j: 5 }, { i: 56, j: 5 }, { i: 57, j: 5 }, { i: 58, j: 5 }, { i: 59, j: 5 }, { i: 60, j: 5 }, { i: 61, j: 5 }, { i: 62, j: 5 }, { i: 63, j: 5 }, { i: 64, j: 5 }, { i: 65, j: 5 }, { i: 66, j: 5 }, { i: 67, j: 5 }, { i: 68, j: 5 }, { i: 69, j: 5 }, { i: 70, j: 5 }, { i: 71, j: 5 }, { i: 72, j: 5 }, { i: 73, j: 5 }, { i: 74, j: 5 }, { i: 75, j: 5 }, { i: 116, j: 5 }, { i: 77, j: 5 }, { i: 78, j: 5 }, { i: 119, j: 5 }, { i: 80, j: 5 }, { i: 81, j: 5 }, { i: 82, j: 5 }, { i: 83, j: 5 }, { i: 84, j: 5 }, { i: 85, j: 5 }, { i: 86, j: 5 }, { i: 87, j: 5 }, { i: 88, j: 5 }, { i: 89, j: 5 }, { i: 90, j: 5 }, { i: 91, j: 5 }, { i: 92, j: 5 }, { i: 93, j: 5 }, { i: 94, j: 5 }, { i: 95, j: 5 }, { i: 96, j: 5 }, { i: 97, j: 5 }, { i: 98, j: 5 }, { i: 99, j: 5 }, { i: 100, j: 5 }, { i: 101, j: 5 }, { i: 102, j: 5 }, { i: 103, j: 5 }, { i: 104, j: 5 }, { i: 105, j: 5 }, { i: 106, j: 5 }, { i: 107, j: 5 }, { i: 108, j: 5 }, { i: 109, j: 5 }, { i: 110, j: 5 }, { i: 111, j: 5 }, { i: 112, j: 5 }, { i: 113, j: 5 }, { i: 114, j: 5 }, { i: 155, j: 5 }, { i: 129, j: 5 }, { i: 157, j: 5 }, { i: 131, j: 5 }, { i: 132, j: 5 }, { i: 160, j: 5 }, { i: 121, j: 5 }, { i: 122, j: 5 }, { i: 123, j: 5 }, { i: 124, j: 5 }, { i: 125, j: 5 }, { i: 126, j: 5 }, { i: 127, j: 5 }, { i: 128, j: 5 }, { i: 142, j: 5 }, { i: 130, j: 5 }, { i: 144, j: 5 }, { i: 145, j: 5 }, { i: 133, j: 5 }, { i: 134, j: 5 }, { i: 135, j: 5 }, { i: 136, j: 5 }, { i: 137, j: 5 }, { i: 138, j: 5 }, { i: 139, j: 5 }, { i: 140, j: 5 }, { i: 141, j: 5 }, { i: 146, j: 5 }, { i: 143, j: 5 }, { i: 148, j: 5 }, { i: 149, j: 5 }, { i: 150, j: 5 }, { i: 147, j: 5 }, { i: 152, j: 5 }, { i: 153, j: 5 }, { i: 154, j: 5 }, { i: 151, j: 5 },  ], css_id: 'tinytable_css_6qv3dxct5d6tzdlk2b55',}, 
-          { positions: [ { i: 0, j: 1 }, { i: 0, j: 2 }, { i: 0, j: 4 }, { i: 0, j: 5 }, { i: 0, j: 3 },  ], css_id: 'tinytable_css_k5e9gt6l34ifoiumq9ky',}, 
-          { positions: [ { i: 161, j: 0 },  ], css_id: 'tinytable_css_2ykm6clsubaurkys8vxz',}, 
-          { positions: [ { i: 158, j: 0 },  ], css_id: 'tinytable_css_d59lws4y2oiq04rkcyca',}, 
-          { positions: [ { i: 1, j: 0 }, { i: 2, j: 0 }, { i: 3, j: 0 }, { i: 4, j: 0 }, { i: 5, j: 0 }, { i: 6, j: 0 }, { i: 7, j: 0 }, { i: 8, j: 0 }, { i: 9, j: 0 }, { i: 10, j: 0 }, { i: 11, j: 0 }, { i: 12, j: 0 }, { i: 13, j: 0 }, { i: 14, j: 0 }, { i: 15, j: 0 }, { i: 16, j: 0 }, { i: 17, j: 0 }, { i: 18, j: 0 }, { i: 19, j: 0 }, { i: 20, j: 0 }, { i: 21, j: 0 }, { i: 22, j: 0 }, { i: 23, j: 0 }, { i: 24, j: 0 }, { i: 25, j: 0 }, { i: 26, j: 0 }, { i: 27, j: 0 }, { i: 28, j: 0 }, { i: 29, j: 0 }, { i: 30, j: 0 }, { i: 31, j: 0 }, { i: 32, j: 0 }, { i: 33, j: 0 }, { i: 34, j: 0 }, { i: 35, j: 0 }, { i: 36, j: 0 }, { i: 37, j: 0 }, { i: 38, j: 0 }, { i: 39, j: 0 }, { i: 40, j: 0 }, { i: 41, j: 0 }, { i: 42, j: 0 }, { i: 43, j: 0 }, { i: 44, j: 0 }, { i: 45, j: 0 }, { i: 46, j: 0 }, { i: 47, j: 0 }, { i: 48, j: 0 }, { i: 49, j: 0 }, { i: 50, j: 0 }, { i: 51, j: 0 }, { i: 52, j: 0 }, { i: 53, j: 0 }, { i: 54, j: 0 }, { i: 55, j: 0 }, { i: 56, j: 0 }, { i: 57, j: 0 }, { i: 58, j: 0 }, { i: 59, j: 0 }, { i: 60, j: 0 }, { i: 61, j: 0 }, { i: 62, j: 0 }, { i: 63, j: 0 }, { i: 64, j: 0 }, { i: 65, j: 0 }, { i: 66, j: 0 }, { i: 67, j: 0 }, { i: 68, j: 0 }, { i: 69, j: 0 }, { i: 70, j: 0 }, { i: 71, j: 0 }, { i: 72, j: 0 }, { i: 73, j: 0 }, { i: 74, j: 0 }, { i: 75, j: 0 }, { i: 76, j: 0 }, { i: 77, j: 0 }, { i: 78, j: 0 }, { i: 79, j: 0 }, { i: 80, j: 0 }, { i: 81, j: 0 }, { i: 82, j: 0 }, { i: 83, j: 0 }, { i: 84, j: 0 }, { i: 85, j: 0 }, { i: 86, j: 0 }, { i: 87, j: 0 }, { i: 88, j: 0 }, { i: 89, j: 0 }, { i: 90, j: 0 }, { i: 91, j: 0 }, { i: 92, j: 0 }, { i: 93, j: 0 }, { i: 94, j: 0 }, { i: 95, j: 0 }, { i: 96, j: 0 }, { i: 97, j: 0 }, { i: 98, j: 0 }, { i: 99, j: 0 }, { i: 100, j: 0 }, { i: 101, j: 0 }, { i: 102, j: 0 }, { i: 103, j: 0 }, { i: 104, j: 0 }, { i: 105, j: 0 }, { i: 106, j: 0 }, { i: 107, j: 0 }, { i: 108, j: 0 }, { i: 109, j: 0 }, { i: 110, j: 0 }, { i: 111, j: 0 }, { i: 112, j: 0 }, { i: 113, j: 0 }, { i: 114, j: 0 }, { i: 115, j: 0 }, { i: 116, j: 0 }, { i: 117, j: 0 }, { i: 118, j: 0 }, { i: 119, j: 0 }, { i: 120, j: 0 }, { i: 121, j: 0 }, { i: 122, j: 0 }, { i: 123, j: 0 }, { i: 124, j: 0 }, { i: 125, j: 0 }, { i: 126, j: 0 }, { i: 127, j: 0 }, { i: 128, j: 0 }, { i: 129, j: 0 }, { i: 130, j: 0 }, { i: 131, j: 0 }, { i: 132, j: 0 }, { i: 133, j: 0 }, { i: 134, j: 0 }, { i: 135, j: 0 }, { i: 136, j: 0 }, { i: 137, j: 0 }, { i: 138, j: 0 }, { i: 139, j: 0 }, { i: 140, j: 0 }, { i: 141, j: 0 }, { i: 142, j: 0 }, { i: 143, j: 0 }, { i: 144, j: 0 }, { i: 145, j: 0 }, { i: 146, j: 0 }, { i: 147, j: 0 }, { i: 148, j: 0 }, { i: 149, j: 0 }, { i: 150, j: 0 }, { i: 151, j: 0 }, { i: 152, j: 0 }, { i: 153, j: 0 }, { i: 154, j: 0 }, { i: 155, j: 0 }, { i: 156, j: 0 }, { i: 157, j: 0 }, { i: 159, j: 0 }, { i: 160, j: 0 },  ], css_id: 'tinytable_css_3dn8hmvtryrma7r3z7zt',}, 
-          { positions: [ { i: 0, j: 0 },  ], css_id: 'tinytable_css_q6r5ymd1i3qkbs1weaw5',}, 
+          { positions: [ { i: 161, j: 3 }, { i: 161, j: 1 }, { i: 161, j: 2 }, { i: 161, j: 4 }, { i: 161, j: 5 },  ], css_id: 'tinytable_css_sgge79zi10vuazdt43sa',}, 
+          { positions: [ { i: 158, j: 5 }, { i: 158, j: 4 }, { i: 158, j: 3 }, { i: 158, j: 1 }, { i: 158, j: 2 },  ], css_id: 'tinytable_css_i3uchcja24psukeeb4w9',}, 
+          { positions: [ { i: 5, j: 1 }, { i: 6, j: 1 }, { i: 7, j: 1 }, { i: 4, j: 1 }, { i: 9, j: 1 }, { i: 10, j: 1 }, { i: 11, j: 1 }, { i: 8, j: 1 }, { i: 13, j: 1 }, { i: 14, j: 1 }, { i: 15, j: 1 }, { i: 12, j: 1 }, { i: 17, j: 1 }, { i: 18, j: 1 }, { i: 19, j: 1 }, { i: 20, j: 1 }, { i: 21, j: 1 }, { i: 22, j: 1 }, { i: 23, j: 1 }, { i: 24, j: 1 }, { i: 25, j: 1 }, { i: 26, j: 1 }, { i: 27, j: 1 }, { i: 28, j: 1 }, { i: 16, j: 1 }, { i: 30, j: 1 }, { i: 31, j: 1 }, { i: 32, j: 1 }, { i: 33, j: 1 }, { i: 34, j: 1 }, { i: 35, j: 1 }, { i: 36, j: 1 }, { i: 37, j: 1 }, { i: 38, j: 1 }, { i: 39, j: 1 }, { i: 40, j: 1 }, { i: 1, j: 1 }, { i: 29, j: 1 }, { i: 3, j: 1 }, { i: 44, j: 1 }, { i: 45, j: 1 }, { i: 46, j: 1 }, { i: 47, j: 1 }, { i: 48, j: 1 }, { i: 49, j: 1 }, { i: 50, j: 1 }, { i: 51, j: 1 }, { i: 52, j: 1 }, { i: 53, j: 1 }, { i: 54, j: 1 }, { i: 55, j: 1 }, { i: 56, j: 1 }, { i: 57, j: 1 }, { i: 58, j: 1 }, { i: 59, j: 1 }, { i: 60, j: 1 }, { i: 61, j: 1 }, { i: 62, j: 1 }, { i: 63, j: 1 }, { i: 64, j: 1 }, { i: 65, j: 1 }, { i: 66, j: 1 }, { i: 67, j: 1 }, { i: 68, j: 1 }, { i: 69, j: 1 }, { i: 70, j: 1 }, { i: 71, j: 1 }, { i: 72, j: 1 }, { i: 73, j: 1 }, { i: 74, j: 1 }, { i: 75, j: 1 }, { i: 76, j: 1 }, { i: 77, j: 1 }, { i: 78, j: 1 }, { i: 79, j: 1 }, { i: 80, j: 1 }, { i: 81, j: 1 }, { i: 42, j: 1 }, { i: 83, j: 1 }, { i: 84, j: 1 }, { i: 85, j: 1 }, { i: 86, j: 1 }, { i: 87, j: 1 }, { i: 88, j: 1 }, { i: 89, j: 1 }, { i: 90, j: 1 }, { i: 91, j: 1 }, { i: 92, j: 1 }, { i: 93, j: 1 }, { i: 94, j: 1 }, { i: 95, j: 1 }, { i: 96, j: 1 }, { i: 97, j: 1 }, { i: 98, j: 1 }, { i: 99, j: 1 }, { i: 100, j: 1 }, { i: 101, j: 1 }, { i: 102, j: 1 }, { i: 103, j: 1 }, { i: 104, j: 1 }, { i: 105, j: 1 }, { i: 106, j: 1 }, { i: 107, j: 1 }, { i: 108, j: 1 }, { i: 109, j: 1 }, { i: 110, j: 1 }, { i: 111, j: 1 }, { i: 112, j: 1 }, { i: 113, j: 1 }, { i: 114, j: 1 }, { i: 115, j: 1 }, { i: 116, j: 1 }, { i: 117, j: 1 }, { i: 118, j: 1 }, { i: 119, j: 1 }, { i: 120, j: 1 }, { i: 121, j: 1 }, { i: 122, j: 1 }, { i: 2, j: 1 }, { i: 124, j: 1 }, { i: 125, j: 1 }, { i: 126, j: 1 }, { i: 127, j: 1 }, { i: 128, j: 1 }, { i: 129, j: 1 }, { i: 130, j: 1 }, { i: 131, j: 1 }, { i: 132, j: 1 }, { i: 133, j: 1 }, { i: 134, j: 1 }, { i: 135, j: 1 }, { i: 136, j: 1 }, { i: 137, j: 1 }, { i: 138, j: 1 }, { i: 139, j: 1 }, { i: 140, j: 1 }, { i: 141, j: 1 }, { i: 142, j: 1 }, { i: 143, j: 1 }, { i: 144, j: 1 }, { i: 145, j: 1 }, { i: 146, j: 1 }, { i: 147, j: 1 }, { i: 148, j: 1 }, { i: 149, j: 1 }, { i: 150, j: 1 }, { i: 151, j: 1 }, { i: 152, j: 1 }, { i: 153, j: 1 }, { i: 154, j: 1 }, { i: 155, j: 1 }, { i: 156, j: 1 }, { i: 157, j: 1 }, { i: 117, j: 2 }, { i: 159, j: 1 }, { i: 160, j: 1 }, { i: 120, j: 2 }, { i: 41, j: 1 }, { i: 1, j: 2 }, { i: 43, j: 1 }, { i: 3, j: 2 }, { i: 4, j: 2 }, { i: 5, j: 2 }, { i: 6, j: 2 }, { i: 7, j: 2 }, { i: 8, j: 2 }, { i: 9, j: 2 }, { i: 10, j: 2 }, { i: 11, j: 2 }, { i: 12, j: 2 }, { i: 13, j: 2 }, { i: 14, j: 2 }, { i: 15, j: 2 }, { i: 16, j: 2 }, { i: 17, j: 2 }, { i: 18, j: 2 }, { i: 19, j: 2 }, { i: 20, j: 2 }, { i: 21, j: 2 }, { i: 22, j: 2 }, { i: 23, j: 2 }, { i: 24, j: 2 }, { i: 25, j: 2 }, { i: 26, j: 2 }, { i: 27, j: 2 }, { i: 28, j: 2 }, { i: 29, j: 2 }, { i: 30, j: 2 }, { i: 31, j: 2 }, { i: 32, j: 2 }, { i: 33, j: 2 }, { i: 34, j: 2 }, { i: 35, j: 2 }, { i: 36, j: 2 }, { i: 37, j: 2 }, { i: 38, j: 2 }, { i: 39, j: 2 }, { i: 40, j: 2 }, { i: 82, j: 1 }, { i: 42, j: 2 }, { i: 43, j: 2 }, { i: 44, j: 2 }, { i: 45, j: 2 }, { i: 46, j: 2 }, { i: 47, j: 2 }, { i: 48, j: 2 }, { i: 49, j: 2 }, { i: 50, j: 2 }, { i: 51, j: 2 }, { i: 52, j: 2 }, { i: 53, j: 2 }, { i: 54, j: 2 }, { i: 55, j: 2 }, { i: 56, j: 2 }, { i: 57, j: 2 }, { i: 58, j: 2 }, { i: 59, j: 2 }, { i: 60, j: 2 }, { i: 61, j: 2 }, { i: 62, j: 2 }, { i: 63, j: 2 }, { i: 64, j: 2 }, { i: 65, j: 2 }, { i: 66, j: 2 }, { i: 67, j: 2 }, { i: 68, j: 2 }, { i: 69, j: 2 }, { i: 70, j: 2 }, { i: 71, j: 2 }, { i: 72, j: 2 }, { i: 73, j: 2 }, { i: 74, j: 2 }, { i: 75, j: 2 }, { i: 76, j: 2 }, { i: 77, j: 2 }, { i: 78, j: 2 }, { i: 79, j: 2 }, { i: 80, j: 2 }, { i: 81, j: 2 }, { i: 123, j: 1 }, { i: 83, j: 2 }, { i: 84, j: 2 }, { i: 85, j: 2 }, { i: 86, j: 2 }, { i: 87, j: 2 }, { i: 88, j: 2 }, { i: 89, j: 2 }, { i: 90, j: 2 }, { i: 91, j: 2 }, { i: 92, j: 2 }, { i: 93, j: 2 }, { i: 94, j: 2 }, { i: 95, j: 2 }, { i: 96, j: 2 }, { i: 97, j: 2 }, { i: 98, j: 2 }, { i: 99, j: 2 }, { i: 100, j: 2 }, { i: 101, j: 2 }, { i: 102, j: 2 }, { i: 103, j: 2 }, { i: 104, j: 2 }, { i: 105, j: 2 }, { i: 106, j: 2 }, { i: 107, j: 2 }, { i: 108, j: 2 }, { i: 109, j: 2 }, { i: 110, j: 2 }, { i: 111, j: 2 }, { i: 112, j: 2 }, { i: 113, j: 2 }, { i: 114, j: 2 }, { i: 115, j: 2 }, { i: 116, j: 2 }, { i: 76, j: 3 }, { i: 118, j: 2 }, { i: 119, j: 2 }, { i: 79, j: 3 }, { i: 121, j: 2 }, { i: 122, j: 2 }, { i: 2, j: 2 }, { i: 124, j: 2 }, { i: 125, j: 2 }, { i: 126, j: 2 }, { i: 127, j: 2 }, { i: 128, j: 2 }, { i: 129, j: 2 }, { i: 130, j: 2 }, { i: 131, j: 2 }, { i: 132, j: 2 }, { i: 133, j: 2 }, { i: 134, j: 2 }, { i: 135, j: 2 }, { i: 136, j: 2 }, { i: 137, j: 2 }, { i: 138, j: 2 }, { i: 139, j: 2 }, { i: 140, j: 2 }, { i: 141, j: 2 }, { i: 142, j: 2 }, { i: 143, j: 2 }, { i: 144, j: 2 }, { i: 145, j: 2 }, { i: 146, j: 2 }, { i: 147, j: 2 }, { i: 148, j: 2 }, { i: 149, j: 2 }, { i: 150, j: 2 }, { i: 151, j: 2 }, { i: 152, j: 2 }, { i: 153, j: 2 }, { i: 154, j: 2 }, { i: 155, j: 2 }, { i: 156, j: 2 }, { i: 157, j: 2 }, { i: 117, j: 3 }, { i: 159, j: 2 }, { i: 160, j: 2 }, { i: 120, j: 3 }, { i: 41, j: 2 }, { i: 1, j: 3 }, { i: 2, j: 3 }, { i: 3, j: 3 }, { i: 4, j: 3 }, { i: 5, j: 3 }, { i: 6, j: 3 }, { i: 7, j: 3 }, { i: 8, j: 3 }, { i: 9, j: 3 }, { i: 10, j: 3 }, { i: 11, j: 3 }, { i: 12, j: 3 }, { i: 13, j: 3 }, { i: 14, j: 3 }, { i: 15, j: 3 }, { i: 16, j: 3 }, { i: 17, j: 3 }, { i: 18, j: 3 }, { i: 19, j: 3 }, { i: 20, j: 3 }, { i: 21, j: 3 }, { i: 22, j: 3 }, { i: 23, j: 3 }, { i: 24, j: 3 }, { i: 25, j: 3 }, { i: 26, j: 3 }, { i: 27, j: 3 }, { i: 28, j: 3 }, { i: 29, j: 3 }, { i: 30, j: 3 }, { i: 31, j: 3 }, { i: 32, j: 3 }, { i: 33, j: 3 }, { i: 34, j: 3 }, { i: 35, j: 3 }, { i: 36, j: 3 }, { i: 37, j: 3 }, { i: 38, j: 3 }, { i: 39, j: 3 }, { i: 40, j: 3 }, { i: 82, j: 2 }, { i: 42, j: 3 }, { i: 43, j: 3 }, { i: 44, j: 3 }, { i: 45, j: 3 }, { i: 46, j: 3 }, { i: 47, j: 3 }, { i: 48, j: 3 }, { i: 49, j: 3 }, { i: 50, j: 3 }, { i: 51, j: 3 }, { i: 52, j: 3 }, { i: 53, j: 3 }, { i: 54, j: 3 }, { i: 55, j: 3 }, { i: 56, j: 3 }, { i: 57, j: 3 }, { i: 58, j: 3 }, { i: 59, j: 3 }, { i: 60, j: 3 }, { i: 61, j: 3 }, { i: 62, j: 3 }, { i: 63, j: 3 }, { i: 64, j: 3 }, { i: 65, j: 3 }, { i: 66, j: 3 }, { i: 67, j: 3 }, { i: 68, j: 3 }, { i: 69, j: 3 }, { i: 70, j: 3 }, { i: 71, j: 3 }, { i: 72, j: 3 }, { i: 73, j: 3 }, { i: 74, j: 3 }, { i: 75, j: 3 }, { i: 35, j: 4 }, { i: 77, j: 3 }, { i: 78, j: 3 }, { i: 38, j: 4 }, { i: 80, j: 3 }, { i: 81, j: 3 }, { i: 123, j: 2 }, { i: 83, j: 3 }, { i: 84, j: 3 }, { i: 85, j: 3 }, { i: 86, j: 3 }, { i: 87, j: 3 }, { i: 88, j: 3 }, { i: 89, j: 3 }, { i: 90, j: 3 }, { i: 91, j: 3 }, { i: 92, j: 3 }, { i: 93, j: 3 }, { i: 94, j: 3 }, { i: 95, j: 3 }, { i: 96, j: 3 }, { i: 97, j: 3 }, { i: 98, j: 3 }, { i: 99, j: 3 }, { i: 100, j: 3 }, { i: 101, j: 3 }, { i: 102, j: 3 }, { i: 103, j: 3 }, { i: 104, j: 3 }, { i: 105, j: 3 }, { i: 106, j: 3 }, { i: 107, j: 3 }, { i: 108, j: 3 }, { i: 109, j: 3 }, { i: 110, j: 3 }, { i: 111, j: 3 }, { i: 112, j: 3 }, { i: 113, j: 3 }, { i: 114, j: 3 }, { i: 115, j: 3 }, { i: 116, j: 3 }, { i: 76, j: 4 }, { i: 118, j: 3 }, { i: 119, j: 3 }, { i: 79, j: 4 }, { i: 121, j: 3 }, { i: 122, j: 3 }, { i: 123, j: 3 }, { i: 124, j: 3 }, { i: 125, j: 3 }, { i: 126, j: 3 }, { i: 127, j: 3 }, { i: 128, j: 3 }, { i: 129, j: 3 }, { i: 130, j: 3 }, { i: 131, j: 3 }, { i: 132, j: 3 }, { i: 133, j: 3 }, { i: 134, j: 3 }, { i: 135, j: 3 }, { i: 136, j: 3 }, { i: 137, j: 3 }, { i: 138, j: 3 }, { i: 139, j: 3 }, { i: 140, j: 3 }, { i: 141, j: 3 }, { i: 142, j: 3 }, { i: 143, j: 3 }, { i: 144, j: 3 }, { i: 145, j: 3 }, { i: 146, j: 3 }, { i: 147, j: 3 }, { i: 148, j: 3 }, { i: 149, j: 3 }, { i: 150, j: 3 }, { i: 151, j: 3 }, { i: 152, j: 3 }, { i: 153, j: 3 }, { i: 154, j: 3 }, { i: 155, j: 3 }, { i: 156, j: 3 }, { i: 157, j: 3 }, { i: 117, j: 4 }, { i: 159, j: 3 }, { i: 160, j: 3 }, { i: 120, j: 4 }, { i: 41, j: 3 }, { i: 1, j: 4 }, { i: 2, j: 4 }, { i: 3, j: 4 }, { i: 4, j: 4 }, { i: 5, j: 4 }, { i: 6, j: 4 }, { i: 7, j: 4 }, { i: 8, j: 4 }, { i: 9, j: 4 }, { i: 10, j: 4 }, { i: 11, j: 4 }, { i: 12, j: 4 }, { i: 13, j: 4 }, { i: 14, j: 4 }, { i: 15, j: 4 }, { i: 16, j: 4 }, { i: 17, j: 4 }, { i: 18, j: 4 }, { i: 19, j: 4 }, { i: 20, j: 4 }, { i: 21, j: 4 }, { i: 22, j: 4 }, { i: 23, j: 4 }, { i: 24, j: 4 }, { i: 25, j: 4 }, { i: 26, j: 4 }, { i: 27, j: 4 }, { i: 28, j: 4 }, { i: 29, j: 4 }, { i: 30, j: 4 }, { i: 31, j: 4 }, { i: 32, j: 4 }, { i: 33, j: 4 }, { i: 34, j: 4 }, { i: 156, j: 4 }, { i: 36, j: 4 }, { i: 37, j: 4 }, { i: 159, j: 4 }, { i: 39, j: 4 }, { i: 40, j: 4 }, { i: 82, j: 3 }, { i: 42, j: 4 }, { i: 43, j: 4 }, { i: 44, j: 4 }, { i: 45, j: 4 }, { i: 46, j: 4 }, { i: 47, j: 4 }, { i: 48, j: 4 }, { i: 49, j: 4 }, { i: 50, j: 4 }, { i: 51, j: 4 }, { i: 52, j: 4 }, { i: 53, j: 4 }, { i: 54, j: 4 }, { i: 55, j: 4 }, { i: 56, j: 4 }, { i: 57, j: 4 }, { i: 58, j: 4 }, { i: 59, j: 4 }, { i: 60, j: 4 }, { i: 61, j: 4 }, { i: 62, j: 4 }, { i: 63, j: 4 }, { i: 64, j: 4 }, { i: 65, j: 4 }, { i: 66, j: 4 }, { i: 67, j: 4 }, { i: 68, j: 4 }, { i: 69, j: 4 }, { i: 70, j: 4 }, { i: 71, j: 4 }, { i: 72, j: 4 }, { i: 73, j: 4 }, { i: 74, j: 4 }, { i: 75, j: 4 }, { i: 35, j: 5 }, { i: 77, j: 4 }, { i: 78, j: 4 }, { i: 38, j: 5 }, { i: 80, j: 4 }, { i: 81, j: 4 }, { i: 82, j: 4 }, { i: 83, j: 4 }, { i: 84, j: 4 }, { i: 85, j: 4 }, { i: 86, j: 4 }, { i: 87, j: 4 }, { i: 88, j: 4 }, { i: 89, j: 4 }, { i: 90, j: 4 }, { i: 91, j: 4 }, { i: 92, j: 4 }, { i: 93, j: 4 }, { i: 94, j: 4 }, { i: 95, j: 4 }, { i: 96, j: 4 }, { i: 97, j: 4 }, { i: 98, j: 4 }, { i: 99, j: 4 }, { i: 100, j: 4 }, { i: 101, j: 4 }, { i: 102, j: 4 }, { i: 103, j: 4 }, { i: 104, j: 4 }, { i: 105, j: 4 }, { i: 106, j: 4 }, { i: 107, j: 4 }, { i: 108, j: 4 }, { i: 109, j: 4 }, { i: 110, j: 4 }, { i: 111, j: 4 }, { i: 112, j: 4 }, { i: 113, j: 4 }, { i: 114, j: 4 }, { i: 115, j: 4 }, { i: 116, j: 4 }, { i: 76, j: 5 }, { i: 118, j: 4 }, { i: 119, j: 4 }, { i: 79, j: 5 }, { i: 121, j: 4 }, { i: 122, j: 4 }, { i: 123, j: 4 }, { i: 124, j: 4 }, { i: 125, j: 4 }, { i: 126, j: 4 }, { i: 127, j: 4 }, { i: 128, j: 4 }, { i: 129, j: 4 }, { i: 130, j: 4 }, { i: 131, j: 4 }, { i: 132, j: 4 }, { i: 133, j: 4 }, { i: 134, j: 4 }, { i: 135, j: 4 }, { i: 136, j: 4 }, { i: 137, j: 4 }, { i: 138, j: 4 }, { i: 139, j: 4 }, { i: 140, j: 4 }, { i: 141, j: 4 }, { i: 142, j: 4 }, { i: 143, j: 4 }, { i: 144, j: 4 }, { i: 145, j: 4 }, { i: 146, j: 4 }, { i: 147, j: 4 }, { i: 148, j: 4 }, { i: 149, j: 4 }, { i: 150, j: 4 }, { i: 151, j: 4 }, { i: 152, j: 4 }, { i: 153, j: 4 }, { i: 154, j: 4 }, { i: 155, j: 4 }, { i: 115, j: 5 }, { i: 157, j: 4 }, { i: 117, j: 5 }, { i: 118, j: 5 }, { i: 160, j: 4 }, { i: 120, j: 5 }, { i: 41, j: 4 }, { i: 1, j: 5 }, { i: 2, j: 5 }, { i: 3, j: 5 }, { i: 4, j: 5 }, { i: 5, j: 5 }, { i: 6, j: 5 }, { i: 7, j: 5 }, { i: 8, j: 5 }, { i: 9, j: 5 }, { i: 10, j: 5 }, { i: 11, j: 5 }, { i: 12, j: 5 }, { i: 13, j: 5 }, { i: 14, j: 5 }, { i: 15, j: 5 }, { i: 16, j: 5 }, { i: 17, j: 5 }, { i: 18, j: 5 }, { i: 19, j: 5 }, { i: 20, j: 5 }, { i: 21, j: 5 }, { i: 22, j: 5 }, { i: 23, j: 5 }, { i: 24, j: 5 }, { i: 25, j: 5 }, { i: 26, j: 5 }, { i: 27, j: 5 }, { i: 28, j: 5 }, { i: 29, j: 5 }, { i: 30, j: 5 }, { i: 31, j: 5 }, { i: 32, j: 5 }, { i: 33, j: 5 }, { i: 34, j: 5 }, { i: 156, j: 5 }, { i: 36, j: 5 }, { i: 37, j: 5 }, { i: 159, j: 5 }, { i: 39, j: 5 }, { i: 40, j: 5 }, { i: 41, j: 5 }, { i: 42, j: 5 }, { i: 43, j: 5 }, { i: 44, j: 5 }, { i: 45, j: 5 }, { i: 46, j: 5 }, { i: 47, j: 5 }, { i: 48, j: 5 }, { i: 49, j: 5 }, { i: 50, j: 5 }, { i: 51, j: 5 }, { i: 52, j: 5 }, { i: 53, j: 5 }, { i: 54, j: 5 }, { i: 55, j: 5 }, { i: 56, j: 5 }, { i: 57, j: 5 }, { i: 58, j: 5 }, { i: 59, j: 5 }, { i: 60, j: 5 }, { i: 61, j: 5 }, { i: 62, j: 5 }, { i: 63, j: 5 }, { i: 64, j: 5 }, { i: 65, j: 5 }, { i: 66, j: 5 }, { i: 67, j: 5 }, { i: 68, j: 5 }, { i: 69, j: 5 }, { i: 70, j: 5 }, { i: 71, j: 5 }, { i: 72, j: 5 }, { i: 73, j: 5 }, { i: 74, j: 5 }, { i: 75, j: 5 }, { i: 116, j: 5 }, { i: 77, j: 5 }, { i: 78, j: 5 }, { i: 119, j: 5 }, { i: 80, j: 5 }, { i: 81, j: 5 }, { i: 82, j: 5 }, { i: 83, j: 5 }, { i: 84, j: 5 }, { i: 85, j: 5 }, { i: 86, j: 5 }, { i: 87, j: 5 }, { i: 88, j: 5 }, { i: 89, j: 5 }, { i: 90, j: 5 }, { i: 91, j: 5 }, { i: 92, j: 5 }, { i: 93, j: 5 }, { i: 94, j: 5 }, { i: 95, j: 5 }, { i: 96, j: 5 }, { i: 97, j: 5 }, { i: 98, j: 5 }, { i: 99, j: 5 }, { i: 100, j: 5 }, { i: 101, j: 5 }, { i: 102, j: 5 }, { i: 103, j: 5 }, { i: 104, j: 5 }, { i: 105, j: 5 }, { i: 106, j: 5 }, { i: 107, j: 5 }, { i: 108, j: 5 }, { i: 109, j: 5 }, { i: 110, j: 5 }, { i: 111, j: 5 }, { i: 112, j: 5 }, { i: 113, j: 5 }, { i: 114, j: 5 }, { i: 155, j: 5 }, { i: 129, j: 5 }, { i: 157, j: 5 }, { i: 131, j: 5 }, { i: 132, j: 5 }, { i: 160, j: 5 }, { i: 121, j: 5 }, { i: 122, j: 5 }, { i: 123, j: 5 }, { i: 124, j: 5 }, { i: 125, j: 5 }, { i: 126, j: 5 }, { i: 127, j: 5 }, { i: 128, j: 5 }, { i: 142, j: 5 }, { i: 130, j: 5 }, { i: 144, j: 5 }, { i: 145, j: 5 }, { i: 133, j: 5 }, { i: 134, j: 5 }, { i: 135, j: 5 }, { i: 136, j: 5 }, { i: 137, j: 5 }, { i: 138, j: 5 }, { i: 139, j: 5 }, { i: 140, j: 5 }, { i: 141, j: 5 }, { i: 146, j: 5 }, { i: 143, j: 5 }, { i: 148, j: 5 }, { i: 149, j: 5 }, { i: 150, j: 5 }, { i: 147, j: 5 }, { i: 152, j: 5 }, { i: 153, j: 5 }, { i: 154, j: 5 }, { i: 151, j: 5 },  ], css_id: 'tinytable_css_p2yfl84oi72icxtv7wmf',}, 
+          { positions: [ { i: 0, j: 1 }, { i: 0, j: 2 }, { i: 0, j: 4 }, { i: 0, j: 5 }, { i: 0, j: 3 },  ], css_id: 'tinytable_css_fslgn7h8y2tcqoypbxur',}, 
+          { positions: [ { i: 161, j: 0 },  ], css_id: 'tinytable_css_xxsqhiopfnr1mvjxkg53',}, 
+          { positions: [ { i: 158, j: 0 },  ], css_id: 'tinytable_css_cld5ipappwbbyw1gj3sp',}, 
+          { positions: [ { i: 1, j: 0 }, { i: 2, j: 0 }, { i: 3, j: 0 }, { i: 4, j: 0 }, { i: 5, j: 0 }, { i: 6, j: 0 }, { i: 7, j: 0 }, { i: 8, j: 0 }, { i: 9, j: 0 }, { i: 10, j: 0 }, { i: 11, j: 0 }, { i: 12, j: 0 }, { i: 13, j: 0 }, { i: 14, j: 0 }, { i: 15, j: 0 }, { i: 16, j: 0 }, { i: 17, j: 0 }, { i: 18, j: 0 }, { i: 19, j: 0 }, { i: 20, j: 0 }, { i: 21, j: 0 }, { i: 22, j: 0 }, { i: 23, j: 0 }, { i: 24, j: 0 }, { i: 25, j: 0 }, { i: 26, j: 0 }, { i: 27, j: 0 }, { i: 28, j: 0 }, { i: 29, j: 0 }, { i: 30, j: 0 }, { i: 31, j: 0 }, { i: 32, j: 0 }, { i: 33, j: 0 }, { i: 34, j: 0 }, { i: 35, j: 0 }, { i: 36, j: 0 }, { i: 37, j: 0 }, { i: 38, j: 0 }, { i: 39, j: 0 }, { i: 40, j: 0 }, { i: 41, j: 0 }, { i: 42, j: 0 }, { i: 43, j: 0 }, { i: 44, j: 0 }, { i: 45, j: 0 }, { i: 46, j: 0 }, { i: 47, j: 0 }, { i: 48, j: 0 }, { i: 49, j: 0 }, { i: 50, j: 0 }, { i: 51, j: 0 }, { i: 52, j: 0 }, { i: 53, j: 0 }, { i: 54, j: 0 }, { i: 55, j: 0 }, { i: 56, j: 0 }, { i: 57, j: 0 }, { i: 58, j: 0 }, { i: 59, j: 0 }, { i: 60, j: 0 }, { i: 61, j: 0 }, { i: 62, j: 0 }, { i: 63, j: 0 }, { i: 64, j: 0 }, { i: 65, j: 0 }, { i: 66, j: 0 }, { i: 67, j: 0 }, { i: 68, j: 0 }, { i: 69, j: 0 }, { i: 70, j: 0 }, { i: 71, j: 0 }, { i: 72, j: 0 }, { i: 73, j: 0 }, { i: 74, j: 0 }, { i: 75, j: 0 }, { i: 76, j: 0 }, { i: 77, j: 0 }, { i: 78, j: 0 }, { i: 79, j: 0 }, { i: 80, j: 0 }, { i: 81, j: 0 }, { i: 82, j: 0 }, { i: 83, j: 0 }, { i: 84, j: 0 }, { i: 85, j: 0 }, { i: 86, j: 0 }, { i: 87, j: 0 }, { i: 88, j: 0 }, { i: 89, j: 0 }, { i: 90, j: 0 }, { i: 91, j: 0 }, { i: 92, j: 0 }, { i: 93, j: 0 }, { i: 94, j: 0 }, { i: 95, j: 0 }, { i: 96, j: 0 }, { i: 97, j: 0 }, { i: 98, j: 0 }, { i: 99, j: 0 }, { i: 100, j: 0 }, { i: 101, j: 0 }, { i: 102, j: 0 }, { i: 103, j: 0 }, { i: 104, j: 0 }, { i: 105, j: 0 }, { i: 106, j: 0 }, { i: 107, j: 0 }, { i: 108, j: 0 }, { i: 109, j: 0 }, { i: 110, j: 0 }, { i: 111, j: 0 }, { i: 112, j: 0 }, { i: 113, j: 0 }, { i: 114, j: 0 }, { i: 115, j: 0 }, { i: 116, j: 0 }, { i: 117, j: 0 }, { i: 118, j: 0 }, { i: 119, j: 0 }, { i: 120, j: 0 }, { i: 121, j: 0 }, { i: 122, j: 0 }, { i: 123, j: 0 }, { i: 124, j: 0 }, { i: 125, j: 0 }, { i: 126, j: 0 }, { i: 127, j: 0 }, { i: 128, j: 0 }, { i: 129, j: 0 }, { i: 130, j: 0 }, { i: 131, j: 0 }, { i: 132, j: 0 }, { i: 133, j: 0 }, { i: 134, j: 0 }, { i: 135, j: 0 }, { i: 136, j: 0 }, { i: 137, j: 0 }, { i: 138, j: 0 }, { i: 139, j: 0 }, { i: 140, j: 0 }, { i: 141, j: 0 }, { i: 142, j: 0 }, { i: 143, j: 0 }, { i: 144, j: 0 }, { i: 145, j: 0 }, { i: 146, j: 0 }, { i: 147, j: 0 }, { i: 148, j: 0 }, { i: 149, j: 0 }, { i: 150, j: 0 }, { i: 151, j: 0 }, { i: 152, j: 0 }, { i: 153, j: 0 }, { i: 154, j: 0 }, { i: 155, j: 0 }, { i: 156, j: 0 }, { i: 157, j: 0 }, { i: 159, j: 0 }, { i: 160, j: 0 },  ], css_id: 'tinytable_css_nbppxglr2kr172zoxvrv',}, 
+          { positions: [ { i: 0, j: 0 },  ], css_id: 'tinytable_css_d1n6tdl6m31fvo08stkn',}, 
           ];
 
           // Loop over the arrays to style the cells
           cellsToStyle.forEach(function (group) {
               group.positions.forEach(function (cell) {
-                  styleCell_3c3fbbw3u6hjz9kfrsum(cell.i, cell.j, group.css_id);
+                  styleCell_40th04gej2cp46htrmdz(cell.i, cell.j, group.css_id);
               });
           });
       });
@@ -3592,17 +3635,17 @@ Click to show/hide the full comparison table of all models
 
     <style>
 
-.table td.tinytable_css_n2ffb3oyhxvpeqn3b8i8, .table th.tinytable_css_n2ffb3oyhxvpeqn3b8i8 { text-align: center; border-bottom: solid #d3d8dc 0.1em; }
-.table td.tinytable_css_zn7gxzw2ko47sqxhdzej, .table th.tinytable_css_zn7gxzw2ko47sqxhdzej { text-align: center; border-bottom: solid black 0.05em; }
-.table td.tinytable_css_6qv3dxct5d6tzdlk2b55, .table th.tinytable_css_6qv3dxct5d6tzdlk2b55 { text-align: center; }
-.table td.tinytable_css_k5e9gt6l34ifoiumq9ky, .table th.tinytable_css_k5e9gt6l34ifoiumq9ky { text-align: center; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
-.table td.tinytable_css_2ykm6clsubaurkys8vxz, .table th.tinytable_css_2ykm6clsubaurkys8vxz { text-align: left; border-bottom: solid #d3d8dc 0.1em; }
-.table td.tinytable_css_d59lws4y2oiq04rkcyca, .table th.tinytable_css_d59lws4y2oiq04rkcyca { text-align: left; border-bottom: solid black 0.05em; }
-.table td.tinytable_css_3dn8hmvtryrma7r3z7zt, .table th.tinytable_css_3dn8hmvtryrma7r3z7zt { text-align: left; }
-.table td.tinytable_css_q6r5ymd1i3qkbs1weaw5, .table th.tinytable_css_q6r5ymd1i3qkbs1weaw5 { text-align: left; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
+.table td.tinytable_css_sgge79zi10vuazdt43sa, .table th.tinytable_css_sgge79zi10vuazdt43sa { text-align: center; border-bottom: solid #d3d8dc 0.1em; }
+.table td.tinytable_css_i3uchcja24psukeeb4w9, .table th.tinytable_css_i3uchcja24psukeeb4w9 { text-align: center; border-bottom: solid black 0.05em; }
+.table td.tinytable_css_p2yfl84oi72icxtv7wmf, .table th.tinytable_css_p2yfl84oi72icxtv7wmf { text-align: center; }
+.table td.tinytable_css_fslgn7h8y2tcqoypbxur, .table th.tinytable_css_fslgn7h8y2tcqoypbxur { text-align: center; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
+.table td.tinytable_css_xxsqhiopfnr1mvjxkg53, .table th.tinytable_css_xxsqhiopfnr1mvjxkg53 { text-align: left; border-bottom: solid #d3d8dc 0.1em; }
+.table td.tinytable_css_cld5ipappwbbyw1gj3sp, .table th.tinytable_css_cld5ipappwbbyw1gj3sp { text-align: left; border-bottom: solid black 0.05em; }
+.table td.tinytable_css_nbppxglr2kr172zoxvrv, .table th.tinytable_css_nbppxglr2kr172zoxvrv { text-align: left; }
+.table td.tinytable_css_d1n6tdl6m31fvo08stkn, .table th.tinytable_css_d1n6tdl6m31fvo08stkn { text-align: left; border-top: solid #d3d8dc 0.1em; border-bottom: solid #d3d8dc 0.05em; }
 </style>
     <div class="container">
-      <table class="table table-borderless" id="tinytable_3c3fbbw3u6hjz9kfrsum" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+      <table class="table table-borderless" id="tinytable_40th04gej2cp46htrmdz" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
         <thead>
         <caption>Comparison of All Log Wage Regression Models (Full Coefficients)</caption>
               <tr>
@@ -4913,58 +4956,29 @@ Click to show/hide the full comparison table of all models
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># Clear models to free memory</span></span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">rm</span>(models, model_names, coef_map)</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">gc</span>())</span></code></pre></div>
-<div id="interpretation-of-results" class="section level2" number="3.1">
-<h2><span class="header-section-number">3.1</span> Interpretation of
-Results</h2>
-<p>The regression results above show how different factors influence
-hourly wages in Canada. Key observations include:</p>
-<ol style="list-style-type: decimal">
-<li><p><strong>Gender Wage Gap</strong>: Across all specifications,
-women earn less than men, though the gap changes a bit depending on what
-controls are added. As this gap is persistent, for our later analysis of
-Gini coefficients between groups, it seems wise to create different
-groups for women and men.</p></li>
-<li><p><strong>Provincial Variation</strong>: Substantial differences
-exist across provinces, with Alberta showing a wage premium and Quebec
-showing somewhat lower wages compared to Ontario (the reference
-province). While the Federal government through income taxes and other
-means of taxation has a large role to play in combating inequality, it
-seems pertinent to divide by provinces as well, as there are differences
-in provincial services, cost of living, sectors, etc.</p></li>
-<li><p><strong>Education Premium</strong>: Higher education levels are
-associated with substantially higher wages, with the greatest returns to
-Bachelor’s and advanced degrees. This seems like a source of inequity
-between workers which we do want to capture.</p></li>
-<li><p><strong>Age Effects</strong>: Wages follow a concave pattern with
-age, increasing at a decreasing rate and eventually plateauing. If
-inequalities are caused by life cycles, young workers make less than
-older workers for example, that’s not too problematic to most, young or
-old, because the young workers will one day be those older workers. Thus
-in our analysis of Gini coefficients, we will be dividing into age
-groups.</p></li>
-<li><p><strong>Immigration Status</strong>: Recent immigrants face a
-wage penalty that persists even after controlling for education and
-industry. This may be due a variety of factors, we will examine this
-later on.</p></li>
-<li><p><strong>Union Coverage</strong>: Union contracts are associated
-with higher wages, reflecting the collective bargaining premium. This
-does not seem like an important distinction to make in analysis of Gini
-coefficients – if say, union membership is on the decline, but unions
-are still powerful and give the fewer workers in them a much greater
-wage, we would want to see that in data for Gini coefficients of say
-25-34 year olds.</p></li>
-<li><p><strong>Industry Effects</strong>: Significant wage differences
-exist across industries, with Mining &amp; Oil Extraction and Finance
-&amp; Insurance offering premiums compared to the Agriculture sector
-(the reference industry). For the same reason given as with education
-premiums, this is something which should be included when looking at
-Gini coefficients for certain segments.</p></li>
-</ol>
+<div id="interpretation-of-model" class="section level2">
+<h2>Interpretation of Model</h2>
+<p>We see in our model that we cannot fully explain away the gender wage
+gap. With our full model, we see that women earn roughly 15% less hourly
+than their male counterparts. This is an economically significant
+difference, as well as being statistically significant to p &lt; 0.001.
+Age, or rather years older than 15, is positively correlated with
+earnings initially, and is decreasing in the second derivative, albeit
+rather slowly – model #4 indicates that around roughly 34 years of age,
+ceteris paribus, hourly earnings peak and then start to drop off (max
+for function -0.001x^2 + 0.038x). These two coefficients are both
+statistically significant to p &lt; 0.001. Recent immigrants have a
+roughly 21.7% lower hourly wage, whereas established immigrants who have
+been here longer than 10 years have only an 8% lower wage – this may be
+affected by unobserved differences in tenure or accumulation of Canadian
+credentials.</p>
+</div>
+<div id="informing-of-groups" class="section level2">
+<h2>Informing of Groups</h2>
 </div>
 </div>
-<div id="income-inequality-analysis" class="section level1" number="4">
-<h1><span class="header-section-number">4</span> Income Inequality
-Analysis</h1>
+<div id="income-inequality-analysis" class="section level1">
+<h1>Income Inequality Analysis</h1>
 <p>This section examines trends in income inequality across different
 demographic groups in Canada. Using the Gini coefficient as a measure of
 inequality, I analyze how wage dispersion has evolved over time for each
@@ -5267,9 +5281,8 @@ patterns of inequality for both genders, the median income graph clearly
 demonstrates persistent gender wage gaps at every education level, with
 the gap widening at higher education levels.</p>
 </div>
-<div id="limitations-of-the-data" class="section level1" number="5">
-<h1><span class="header-section-number">5</span> Limitations of the
-Data</h1>
+<div id="limitations-of-the-data" class="section level1">
+<h1>Limitations of the Data</h1>
 <p>As this paper uses the publicly available LFS data, certain
 information is excluded – there are no observations for the Territories,
 nor is there any access to ethnicity/race variables. The standard scope
@@ -5277,17 +5290,17 @@ of the LFS also applies: full-time members of the armed forces, people
 living on reserves, institutionalized persons, and those under the age
 of 15 are excluded.</p>
 </div>
-<div id="conclusions-and-policy-implications" class="section level1" number="6">
-<h1><span class="header-section-number">6</span> Conclusions and Policy
-Implications</h1>
+<div id="conclusions-and-policy-implications" class="section level1">
+<h1>Conclusions and Policy Implications</h1>
 <p>[To be completed after analysis]</p>
 </div>
-<div id="references" class="section level1" number="7">
-<h1><span class="header-section-number">7</span> References</h1>
-<p>[To be added]</p>
+<div id="references" class="section level1">
+<h1>References</h1>
+<p>Statistics Canada. (n.d.). Labour Force Survey: Public Use Microdata
+File. Www150.Statcan.gc.ca. <a href="https://www150.statcan.gc.ca/n1/en/catalogue/71M0001X" class="uri">https://www150.statcan.gc.ca/n1/en/catalogue/71M0001X</a></p>
 </div>
-<div id="ai-disclosures" class="section level1" number="8">
-<h1><span class="header-section-number">8</span> AI Disclosures</h1>
+<div id="ai-disclosures" class="section level1">
+<h1>AI Disclosures</h1>
 <p>Through the course of this project, I utilized Gemini and ChatGPT.
 Unlike ChatGPT, Gemini does not provide an easy way to share the whole
 chat, so I’ve included some sample queries and responses and wrote a

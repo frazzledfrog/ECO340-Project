@@ -8,7 +8,7 @@ output:
     toc_depth: 3
     toc_float: true
     fig_caption: true
-    number_sections: true
+    number_sections: false
     theme: cosmo
     css: styles.css
     highlight: tango
@@ -276,13 +276,33 @@ The data.table package was used rather than the mutate function. The reason for 
 
 
 
-# Wage Determinants: Regression Analysis
+# Wage Determinants: Regression Analysis Methodology
 
-This section examines the impact of key variables and controls on hourly earnings. As this model is estimated by applying it to multiple waves of LFS data, year dummy variables are included to account for time fixed-effects and year-specific events. The analysis is restricted to employed Canadians, with variations in unemployment and labour force participation covered later.
+This section examines the impact of key variables and controls on hourly earnings. As this model is estimated by applying it to multiple waves of LFS data, which are cross-sections of the population rather than a cohort study like the NLSY, year dummy variables are included to account for time fixed-effects and year-specific events. The analysis is restricted to employed Canadians, one deficit of this analysis is that the unemployment rate & labour force participation rate could belie interest shifts in the labour market – if there is declining inequality of income distribution among employed Canadian, but this is accompanied by a sharp rise in the unemployment rate, has equality of earnings distribution really improved? 
 
-The purpose of this section is not to derive any profound insights into the determinants of wages in Canada, rather the goal is to create a starting point for how we can divide up our sample to compare the trends of Gini coefficents over time.
+The purpose of this section is not to derive any profound insights into the determinants of wages in Canada, rather the goal is to create a starting point for how we can divide up our sample to compare the trends of Gini coefficients over time. The dependent variable in these regressions is the natural logarithm of hourly earnings, for easier interpretation of coefficients. The "base" or intercept observation in the final model (and thus for relevant terms, all models) is:
+Part of the June 2024 LFS
+Male
+Not an immigrant
+Not covered by a union contract
+Graduated from highschool
+From Ontario
+Working in the Agriculture Industry
+15 years old (Age is a discrete running variable based on age bracket midpoints)
 
-The dependent variable in these regressions is the natural logarithm of hourly earnings, for easier interpretation of coefficients. The "base" or intercept observation is a male high school graduate from Ontario who is not in a union, nor is covered by a union contract, nor is an immigrant, and works in the Agriculture sector.
+
+To start building the model, I began by using gender alongside the aforementioned time dummies. The only controls included were to control for temporal effects – this lengthy string of dummy variables is omitted completely from the final output. The further back the year was, the larger the deviation from the reference period of the June 2024 LFS was, that is to say the coefficient was a larger negative modifier. Every single dummy variable’s coefficient was significant at p < 0.001, except for January 2024, which wasn’t (until more variables were added) significant to any meaningful level – this aligns with intuition. This is model 1, “Gender Only.”
+
+Layering on, adding province of residence should help control for certain factors such as cost of living – as this is the PUMF, geographic identifiers are limited to provinces and the 9 largest Census Metropolitan Areas (CMAs), so I didn’t include a rural/suburban/urban variable. This is model 2, “Add Provinces.” For ease of viewing, I only display the dummies for Quebec, Alberta, and British Columbia.
+
+I then account for the impact of education, layering on another set of dummy variables. Similarly, for ease of viewing, I only include the coefficients for 0-8 years of education, graduating with a bachelor’s degree, and graduating with more than a bachelor’s degree. This is model 3, “Add Education.”
+
+Next, I decided to use a two term model for age’s impact on earnings. As I wasn’t completely sure how to choose the “best” number of terms, I used the Akaike Information Criteria (AIC) score to see where adding more terms stopped meaningfully improving prediction error. While the AIC score was minimized at seven terms, by far and away the largest improvement was from adding that second term – for ease I just stopped at two. This makes model 4, “Add Age.”
+
+I then add in industry (based on NAICS code), whether the worker is covered by a union contract, if the worker is a recent/established immigrant (distinguishing between the two). This is model 5, the “Full Model.” For ease of viewing, I omit most industries, opting to show mining & oil extraction, finance & insurance, and healthcare & social assistance.
+
+To see those variables which have been omitted from the table on display, including time (denoted as years from start of sample period in the coefficient naming scheme), click the button below to view the full table. 
+
 
 ```{r wage-regressions}
 # Store the models for comparison
@@ -413,23 +433,13 @@ rm(models, model_names, coef_map)
 invisible(gc())
 ```
 
-## Interpretation of Results
+## Interpretation of Model
+We see in our model that we cannot fully explain away the gender wage gap. With our full model, we see that women earn roughly 15% less hourly than their male counterparts. This is an economically significant difference, as well as being statistically significant to p < 0.001.
+Age, or rather years older than 15, is positively correlated with earnings initially, and is decreasing in the second derivative, albeit rather slowly – model #4 indicates that around roughly 34 years of age, ceteris paribus, hourly earnings peak and then start to drop off (max for function -0.001x^2 + 0.038x). These two coefficients are both statistically significant to p < 0.001. 
+Recent immigrants have a roughly 21.7% lower hourly wage, whereas established immigrants who have been here longer than 10 years have only an 8% lower wage – this may be affected by unobserved differences in tenure or accumulation of Canadian credentials.
 
-The regression results above show how different factors influence hourly wages in Canada. Key observations include:
+## Informing of Groups
 
-1.  **Gender Wage Gap**: Across all specifications, women earn less than men, though the gap changes a bit depending on what controls are added. As this gap is persistent, for our later analysis of Gini coefficients between groups, it seems wise to create different groups for women and men.
-
-2.  **Provincial Variation**: Substantial differences exist across provinces, with Alberta showing a wage premium and Quebec showing somewhat lower wages compared to Ontario (the reference province). While the Federal government through income taxes and other means of taxation has a large role to play in combating inequality, it seems pertinent to divide by provinces as well, as there are differences in provincial services, cost of living, sectors, etc.
-
-3.  **Education Premium**: Higher education levels are associated with substantially higher wages, with the greatest returns to Bachelor's and advanced degrees. This seems like a source of inequity between workers which we do want to capture.
-
-4.  **Age Effects**: Wages follow a concave pattern with age, increasing at a decreasing rate and eventually plateauing. If inequalities are caused by life cycles, young workers make less than older workers for example, that's not too problematic to most, young or old, because the young workers will one day be those older workers. Thus in our analysis of Gini coefficients, we will be dividing into age groups.
-
-5.  **Immigration Status**: Recent immigrants face a wage penalty that persists even after controlling for education and industry. This may be due a variety of factors, we will examine this later on.
-
-6.  **Union Coverage**: Union contracts are associated with higher wages, reflecting the collective bargaining premium. This does not seem like an important distinction to make in analysis of Gini coefficients -- if say, union membership is on the decline, but unions are still powerful and give the fewer workers in them a much greater wage, we would want to see that in data for Gini coefficients of say 25-34 year olds.
-
-7.  **Industry Effects**: Significant wage differences exist across industries, with Mining & Oil Extraction and Finance & Insurance offering premiums compared to the Agriculture sector (the reference industry). For the same reason given as with education premiums, this is something which should be included when looking at Gini coefficients for certain segments.
 
 # Income Inequality Analysis
 
@@ -736,7 +746,7 @@ As this paper uses the publicly available LFS data, certain information is exclu
 
 # References
 
-[To be added]
+Statistics Canada. (n.d.). Labour Force Survey: Public Use Microdata File. Www150.Statcan.gc.ca. <https://www150.statcan.gc.ca/n1/en/catalogue/71M0001X>
 
 # AI Disclosures
 
