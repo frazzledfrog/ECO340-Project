@@ -1,5 +1,5 @@
 ---
-title: "Income Inequality and Labour Market Outcomes in Canada, 2000-2024"
+title: "Income Inequality and Labour Market Outcomes in Canada 2000-2024"
 author: "Alex McKeown"
 date: "2025-03-29"
 output:
@@ -44,7 +44,8 @@ knitr::opts_chunk$set(
   fig.width = 10,     
   fig.height = 6,     
   fig.align = "center", 
-  dpi = 300           
+  dpi = 300,
+  gc.verbose = FALSE  # Suppress garbage collection output
 )
 
 # Make sure the required packages for code folding are loaded
@@ -61,6 +62,7 @@ if (!requireNamespace("knitr", quietly = TRUE)) {
 # Define required packages, install if needed, load all packages, set working directory,
 # load and combine data from CSV files matching the pattern "^pub(01|06)\\d{2}\\.csv$"
 rm(list = ls())
+invisible(gc())
 
 required_packages <- c(
   "data.table", "dplyr", "tidyverse", "plm",
@@ -126,9 +128,11 @@ if (length(csv_files) == 0) {
         LFS_data <- data.table::rbindlist(list(LFS_data, current_data), use.names = TRUE, fill = TRUE)
       }
     }
-    gc()
+    rm(current_data)
+    invisible(gc())
   }
-  gc()
+  rm(all_csv_files, all_basenames, matching_indices, csv_files, file_path)
+  invisible(gc())
 }
 ```
 
@@ -255,7 +259,8 @@ LFS_data[, age_group := fcase(
     default = NA_character_
 )]
 
-gc()
+rm(unique_vals, val, new_col_name)
+invisible(gc())
 ```
 
 To make analysis easier, I created several derived variables from the raw LFS data. Variables with multiple categories in numeric form, such as province codes, were converted to binary dummy variables. The key transformations include:
@@ -287,12 +292,16 @@ models <- list()
 dummy_formula_part <- paste(yfs_dummy_names, collapse = " + ")
 regression_formula <- as.formula(paste("ln_income ~ woman +", dummy_formula_part))
 models[[1]] <- lm(regression_formula, data = LFS_data)
+rm(regression_formula, dummy_formula_part)
+invisible(gc())
 
 # Model 2: Adding province effects
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
 dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
 regression_formula <- as.formula(paste("ln_income ~ woman + ", dummy_formula_part1, " + ", dummy_formula_part2))
 models[[2]] <- lm(regression_formula, data = LFS_data)
+rm(regression_formula, dummy_formula_part1, dummy_formula_part2)
+invisible(gc())
 
 # Model 3: Adding education effects
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
@@ -300,6 +309,8 @@ dummy_formula_part2 <- paste(province_dummies, collapse = " + ")
 dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
 regression_formula <- as.formula(paste("ln_income ~ woman + ", dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3))
 models[[3]] <- lm(regression_formula, data = LFS_data)
+rm(regression_formula, dummy_formula_part1, dummy_formula_part2, dummy_formula_part3)
+invisible(gc())
 
 # Model 4: Adding age polynomial
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
@@ -308,6 +319,8 @@ dummy_formula_part3 <- paste(education_dummies, collapse = " + ")
 regression_formula <- as.formula(paste("ln_income ~ woman + poly(rough_age_dock15, 2, raw=TRUE) + ",
                                      dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3))
 models[[4]] <- lm(regression_formula, data = LFS_data)
+rm(regression_formula, dummy_formula_part1, dummy_formula_part2, dummy_formula_part3)
+invisible(gc())
 
 # Model 5: Full model with union, immigration, and industry sectors
 dummy_formula_part1 <- paste(yfs_dummy_names, collapse = " + ")
@@ -317,6 +330,8 @@ dummy_formula_part4 <- paste(naics_dummies, collapse = " + ")
 regression_formula <- as.formula(paste("ln_income ~ woman + poly(rough_age_dock15, 2, raw=TRUE) + newer_immigrant + older_immigrant + union_contract + ",
                                      dummy_formula_part1, " + ", dummy_formula_part2, " + ", dummy_formula_part3, " + ", dummy_formula_part4))
 models[[5]] <- lm(regression_formula, data = LFS_data)
+rm(regression_formula, dummy_formula_part1, dummy_formula_part2, dummy_formula_part3, dummy_formula_part4)
+invisible(gc())
 
 # Define model names for the table
 model_names <- c("Gender Only", "Add Provinces", "Add Education", "Add Age", "Full Model")
@@ -355,6 +370,10 @@ modelsummary(models,
              gof_map = c("nobs", "r.squared", "adj.r.squared"),
              notes = "Year fixed effects included in all models. Ontario is the reference province. Full range of dummy variables not shown for ease of viewing",
              output = "html")
+
+# Clear models to free memory
+rm(models, model_names, coef_map)
+invisible(gc())
 ```
 
 ## Interpretation of Results
@@ -377,153 +396,298 @@ The regression results above show how different factors influence hourly wages i
 
 # Income Inequality Analysis
 
-This section examines trends in income inequality across different demographic groups in Canada. Using the Gini coefficient as a measure of inequality, I analyze how wage dispersion has evolved over time for each age, gender, and provincial subgroup.
-
-```{r group-creation, include=FALSE}
-gc()
-rm(models) # Memory management
-
-# Create nested subsets for analysis
-subsetted_data <- split(LFS_data, LFS_data$province_name)
-subsetted_data <- lapply(subsetted_data, function(subset_prov) {
-  split(subset_prov, subset_prov$named_sex)
-})
-subsetted_data <- lapply(subsetted_data, function(subset_prov) {
-  lapply(subset_prov, function(subset_prov_sex){
-    split(subset_prov_sex, subset_prov_sex$age_group)
-  })
-})
-```
+This section examines trends in income inequality across different demographic groups in Canada. Using the Gini coefficient as a measure of inequality, I analyze how wage dispersion has evolved over time for each gender, province, immigration status, and education level subgroup.
 
 ```{r gini-calculation}
 # Function to calculate Gini coefficient for each subset by year
 calculate_gini_by_year <- function(data_subset) {
   if (is.null(data_subset) || nrow(data_subset) < 10) {
-    return(data.frame(years_from_start = numeric(0), gini = numeric(0)))
+    return(data.frame(years_from_start = numeric(0), gini = numeric(0), median_income = numeric(0)))
   }
   
   result <- data_subset[!is.na(HRLYEARN), .(
-    gini = ineq::ineq(HRLYEARN, type="Gini"),
+    gini = as.numeric(ineq::ineq(HRLYEARN, type="Gini")),
+    median_income = as.numeric(median(HRLYEARN, na.rm = TRUE)),
     count = .N
   ), by = years_from_start]
   
   result <- result[count >= 30]
-  return(result[, .(years_from_start, gini)])
+  return(result[, .(years_from_start, gini, median_income)])
 }
 
-# Initialize results dataframe
-gini_results <- data.frame(
-  province = character(),
-  sex = character(),
-  age_group = character(),
+# Process gender subsets first
+gender_subsets <- split(LFS_data, LFS_data$named_sex)
+gender_gini_results <- data.frame(
+  group = character(),
   years_from_start = numeric(),
-  gini = numeric()
+  gini = numeric(),
+  median_income = numeric(),
+  stringsAsFactors = FALSE
 )
 
-# Process each subset and calculate Gini
-for (province_name in names(subsetted_data)) {
-  for (sex_name in names(subsetted_data[[province_name]])) {
-    for (age_name in names(subsetted_data[[province_name]][[sex_name]])) {
-      subset_gini <- calculate_gini_by_year(
-        subsetted_data[[province_name]][[sex_name]][[age_name]]
-      )
-      
-      if (nrow(subset_gini) > 0) {
-        subset_gini_df <- data.frame(
-          province = province_name,
-          sex = sex_name,
-          age_group = age_name,
-          years_from_start = subset_gini$years_from_start,
-          gini = subset_gini$gini
-        )
-        gini_results <- rbind(gini_results, subset_gini_df)
-      }
-      
-      # Periodic memory cleanup
-      if (nrow(gini_results) %% 100 == 0) gc()
-    }
+for (gender_name in names(gender_subsets)) {
+  subset_gini <- calculate_gini_by_year(gender_subsets[[gender_name]])
+  
+  if (nrow(subset_gini) > 0) {
+    subset_gini_df <- data.frame(
+      group = gender_name,
+      years_from_start = subset_gini$years_from_start,
+      gini = subset_gini$gini,
+      median_income = subset_gini$median_income,
+      stringsAsFactors = FALSE
+    )
+    gender_gini_results <- rbind(gender_gini_results, subset_gini_df)
   }
 }
 
-# Convert to actual years for visualization
-gini_results$year <- 2006 + gini_results$years_from_start
-
-# Save results to file
-write.csv(gini_results, "gini_coefficients_by_group.csv", row.names = FALSE)
-```
-
-## National Trends in Income Inequality
-
-The following chart shows how income inequality has changed over time for different gender and age groups across Canada:
-
-```{r national-gini}
-# Create national time series
-ggplot(gini_results, aes(x = year, y = gini, color = sex, linetype = age_group)) +
-  stat_summary(fun = mean, geom = "line") +
-  labs(title = "Income Inequality (Gini) Trends by Gender and Age",
-       subtitle = "All Provinces Combined",
-       x = "Year",
-       y = "Gini Coefficient",
-       color = "Gender",
-       linetype = "Age Group") +
-  theme_minimal() +
-  scale_y_continuous(limits = c(0.2, 0.3))
-```
-
-## Provincial Patterns in Inequality
-
-Next, we examine provincial variations in income inequality:
-
-```{r provincial-gini}
-# Create time series by province
-ggplot(gini_results, aes(x = year, y = gini, color = sex, linetype = age_group)) +
-  stat_summary(fun = mean, geom = "line") +
-  facet_wrap(~ province) +
-  labs(title = "Income Inequality Trends by Province, Gender, and Age",
-       x = "Year",
-       y = "Gini Coefficient",
-       color = "Gender",
-       linetype = "Age Group") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_y_continuous(limits = c(0.2, 0.5))
-```
-
-## Age and Gender-Specific Inequality Trends
-
-```{r age-group-gini}
-# Create time series by age group (excluding youngest group)
-ggplot(gini_results[gini_results$age_group != "15_19", ], aes(x = year, y = gini, color = province)) +
-  geom_line() +
-  facet_grid(sex ~ age_group) +
-  labs(title = "Income Inequality Trends by Age Group and Gender",
-       subtitle = "Excludes 15-19 age group with high volatility",
-       x = "Year",
-       y = "Gini Coefficient",
-       color = "Province") +
-  theme_minimal() +
-  theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-## Focus on Working-Age Population
-
-The working-age population (20-54) shows particularly interesting patterns:
-
-```{r working-age-gini}
-# Focus on working-age population
-working_age <- gini_results[gini_results$age_group %in% c("20_34", "35_54"), ]
-
-ggplot(working_age, aes(x = year, y = gini, color = sex)) +
-  stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+# Convert to actual years and create gender plot
+gender_gini_results$year <- 2006 + gender_gini_results$years_from_start
+p <- ggplot(gender_gini_results, aes(x = year, y = gini, color = group)) +
+  geom_line(linewidth = 1.2) +
   geom_smooth(method = "loess", se = TRUE, alpha = 0.2) +
-  labs(title = "Income Inequality Trends in Working-Age Population (20-54)",
+  labs(title = "Income Inequality (Gini) Trends by Gender",
+       subtitle = "All of Canada",
        x = "Year",
        y = "Gini Coefficient",
        color = "Gender") +
   theme_minimal() +
-  scale_color_brewer(palette = "Set1")
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0.2, 0.35))
+print(p)
+rm(p, gender_subsets, gender_gini_results, subset_gini, subset_gini_df, gender_name)
+invisible(gc())
+
+# Process province subsets
+province_subsets <- split(LFS_data, LFS_data$province_name)
+province_gini_results <- data.frame(
+  group = character(),
+  years_from_start = numeric(),
+  gini = numeric(),
+  median_income = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (province_name in names(province_subsets)) {
+  subset_gini <- calculate_gini_by_year(province_subsets[[province_name]])
+  
+  if (nrow(subset_gini) > 0) {
+    subset_gini_df <- data.frame(
+      group = province_name,
+      years_from_start = subset_gini$years_from_start,
+      gini = subset_gini$gini,
+      median_income = subset_gini$median_income,
+      stringsAsFactors = FALSE
+    )
+    province_gini_results <- rbind(province_gini_results, subset_gini_df)
+  }
+}
+
+# Convert to actual years and create province plot
+province_gini_results$year <- 2006 + province_gini_results$years_from_start
+p <- ggplot(province_gini_results, aes(x = year, y = gini, color = group)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, alpha = 0.2) +
+  labs(title = "Income Inequality Trends by Province",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Province") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(nrow = 2)) +
+  scale_y_continuous(limits = c(0.2, 0.35))
+print(p)
+rm(p, province_subsets, province_gini_results, subset_gini, subset_gini_df, province_name)
+invisible(gc())
+
+# Process immigration status subsets
+LFS_data[, immigration_status := fcase(
+  newer_immigrant == 1, "Recent Immigrant",
+  older_immigrant == 1, "Established Immigrant",
+  default = "Canadian-born"
+)]
+immigration_subsets <- split(LFS_data, LFS_data$immigration_status)
+immigration_gini_results <- data.frame(
+  group = character(),
+  years_from_start = numeric(),
+  gini = numeric(),
+  median_income = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (immigration_name in names(immigration_subsets)) {
+  subset_gini <- calculate_gini_by_year(immigration_subsets[[immigration_name]])
+  
+  if (nrow(subset_gini) > 0) {
+    subset_gini_df <- data.frame(
+      group = immigration_name,
+      years_from_start = subset_gini$years_from_start,
+      gini = subset_gini$gini,
+      median_income = subset_gini$median_income,
+      stringsAsFactors = FALSE
+    )
+    immigration_gini_results <- rbind(immigration_gini_results, subset_gini_df)
+  }
+}
+
+# Convert to actual years and create immigration plot
+immigration_gini_results$year <- 2006 + immigration_gini_results$years_from_start
+p <- ggplot(immigration_gini_results, aes(x = year, y = gini, color = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_smooth(method = "loess", se = TRUE, alpha = 0.2) +
+  labs(title = "Income Inequality Trends by Immigration Status",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Immigration Status") +
+  theme_minimal() +
+  scale_color_brewer(palette = "Dark2") +
+  scale_y_continuous(limits = c(0.2, 0.35))
+print(p)
+rm(p, immigration_subsets, immigration_gini_results, subset_gini, subset_gini_df, immigration_name)
+invisible(gc())
+
+# Process education level subsets
+LFS_data[, education_level := fcase(
+  zero_to_eight == 1, "0-8 years",
+  some_hs == 1, "Some high school",
+  EDUC == 2, "High school graduate",
+  some_ps == 1, "Some post-secondary",
+  ps_cert == 1, "Post-secondary certificate",
+  ba == 1, "Bachelor's degree",
+  above_ba == 1, "Above bachelor's",
+  default = NA_character_
+)]
+education_subsets <- split(LFS_data, LFS_data$education_level)
+education_gini_results <- data.frame(
+  group = character(),
+  years_from_start = numeric(),
+  gini = numeric(),
+  median_income = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (education_name in names(education_subsets)) {
+  if (is.na(education_name)) next
+  
+  subset_gini <- calculate_gini_by_year(education_subsets[[education_name]])
+  
+  if (nrow(subset_gini) > 0) {
+    subset_gini_df <- data.frame(
+      group = education_name,
+      years_from_start = subset_gini$years_from_start,
+      gini = subset_gini$gini,
+      median_income = subset_gini$median_income,
+      stringsAsFactors = FALSE
+    )
+    education_gini_results <- rbind(education_gini_results, subset_gini_df)
+  }
+}
+
+# Convert to actual years and create education plot
+education_gini_results$year <- 2006 + education_gini_results$years_from_start
+filtered_education_gini <- education_gini_results[!is.na(education_gini_results$group), ]
+p <- ggplot(filtered_education_gini, aes(x = year, y = gini, color = group)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, alpha = 0.2) +
+  labs(title = "Income Inequality Trends by Education Level",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Education Level") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_y_continuous(limits = c(0.15, 0.4))
+print(p)
+rm(p, education_subsets, education_gini_results, filtered_education_gini, subset_gini, subset_gini_df, education_name)
+invisible(gc())
+
+# Process gender-education intersectional analysis
+LFS_data[, gender_education := paste(named_sex, education_level, sep = " - ")]
+gender_education_subsets <- split(LFS_data, LFS_data$gender_education)
+gender_education_gini_results <- data.frame(
+  group = character(),
+  years_from_start = numeric(),
+  gini = numeric(),
+  median_income = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (gender_education_name in names(gender_education_subsets)) {
+  if (grepl("NA", gender_education_name)) next
+  
+  subset_gini <- calculate_gini_by_year(gender_education_subsets[[gender_education_name]])
+  
+  if (nrow(subset_gini) > 0) {
+    subset_gini_df <- data.frame(
+      group = gender_education_name,
+      years_from_start = subset_gini$years_from_start,
+      gini = subset_gini$gini,
+      median_income = subset_gini$median_income,
+      stringsAsFactors = FALSE
+    )
+    gender_education_gini_results <- rbind(gender_education_gini_results, subset_gini_df)
+  }
+  
+  # Periodic memory cleanup
+  if (nrow(gender_education_gini_results) %% 10 == 0) {
+    invisible(gc())
+  }
+}
+
+# Convert to actual years and create intersectional plots
+gender_education_gini_results$year <- 2006 + gender_education_gini_results$years_from_start
+
+# Filter to key education levels for readability
+key_education_levels <- c(
+  "Male - High school graduate", 
+  "Female - High school graduate",
+  "Male - Post-secondary certificate", 
+  "Female - Post-secondary certificate",
+  "Male - Bachelor's degree", 
+  "Female - Bachelor's degree",
+  "Male - Above bachelor's", 
+  "Female - Above bachelor's"
+)
+
+filtered_gender_education <- gender_education_gini_results[
+  gender_education_gini_results$group %in% key_education_levels, 
+]
+
+# Create Gini coefficient plot
+p <- ggplot(filtered_gender_education, aes(x = year, y = gini, color = group)) +
+  geom_line() +
+  geom_smooth(method = "loess", se = FALSE, alpha = 0.2) +
+  labs(title = "Income Inequality by Gender and Education Level",
+       x = "Year",
+       y = "Gini Coefficient",
+       color = "Group") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_y_continuous(limits = c(0.15, 0.4))
+print(p)
+rm(p)
+
+# Create median income plot
+p <- ggplot(filtered_gender_education, aes(x = year, y = median_income, color = group)) +
+  geom_line(linewidth = 1.2) +
+  geom_smooth(method = "loess", se = FALSE, alpha = 0.2) +
+  labs(title = "Median Hourly Income by Gender and Education Level",
+       x = "Year",
+       y = "Median Hourly Income ($)",
+       color = "Group") +
+  theme_minimal() +
+  theme(legend.position = "right") +
+  scale_y_continuous(labels = scales::dollar)
+print(p)
+
+# Clean up all remaining objects
+rm(p, gender_education_subsets, gender_education_gini_results, filtered_gender_education, 
+   key_education_levels, subset_gini, subset_gini_df, gender_education_name, calculate_gini_by_year)
+if(exists("LFS_data")) {
+  rm(LFS_data)
+}
+invisible(invisible(gc()))
 ```
+
+The intersectional analysis reveals important dynamics in both inequality (Gini coefficient) and median incomes across gender and education groups. While certain education levels exhibit similar patterns of inequality for both genders, the median income graph clearly demonstrates persistent gender wage gaps at every education level, with the gap widening at higher education levels.
 
 # Limitations of the Data
 
@@ -547,4 +711,4 @@ Writing assistance: <https://chatgpt.com/share/67eebc76-c988-8010-801d-fbc482795
 
 Code assistance: <https://g.co/gemini/share/cc0925dc8fb8>, <https://g.co/gemini/share/6866b019b792> <https://g.co/gemini/share/898697efa94a>
 
-My main workflow for code corrections was to boot up a chat with Gemini and ask for help with specific R syntax issues rather than entire workflow planning. This approach allowed me to maintain control over the overall structure while getting assistance with technical implementation details.
+My main workflow for code corrections was to boot up a chat with Gemini and ask for help with specific R syntax issues rather than entire workflow planning. This approach allowed me to maintain control over the overall structure while getting assistance with technical implementation details. Or for general questions, for example this question and response <https://g.co/gemini/share/4acf62d26b19> where I ask how I can make it so that when I call gc() it doesn't put the stats in the knitted doc, and it told me I could just replace every gc() call with invisible(gc())
